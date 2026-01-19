@@ -9,7 +9,7 @@
 
 ### Main Features
 
-1. Supports Erpnext Version 15
+1. Supports Erpnext Version 15 and 16
 2. User-friendly and provides a good user experience and speed of use
 3. The cashier can either use list view or card view during sales transactions. Card view shows the images of the items
 4. Supports enqueue invoice submission after printing the receipt for faster processing
