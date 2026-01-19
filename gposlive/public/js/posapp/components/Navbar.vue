@@ -9,9 +9,8 @@
         class="mr-2"
         color="primary"
       />
-      <v-toolbar-title @click="go_desk" style="cursor: pointer" class="text-uppercase text-primary">
-        <span class="font-weight-light">{{ $t("POS") }}</span>
-        <span>{{ $t("Awesome") }}</span>
+      <v-toolbar-title @click="go_desk" style="cursor: pointer" class="text-primary">
+        <span class="font-weight-light">{{ $t("GPosLive") }}</span>
       </v-toolbar-title>
 
       <v-spacer></v-spacer>
