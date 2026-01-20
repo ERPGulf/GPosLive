@@ -158,7 +158,7 @@ def update_opening_shift_data(data, pos_profile):
     data["stock_settings"] = {}
     data["stock_settings"].update({"allow_negative_stock": allow_negative_stock})
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_items(
     pos_profile, price_list=None, item_group="", search_value="", customer=None
 ):
