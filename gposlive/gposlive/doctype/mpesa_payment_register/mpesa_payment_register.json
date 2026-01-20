@@ -235,7 +235,7 @@
  "links": [],
  "modified": "2023-06-07 22:24:09.518620",
  "modified_by": "Administrator",
- "module": "POSAwesome",
+ "module": "GPosLive",
  "name": "Mpesa Payment Register",
  "naming_rule": "Expression (old style)",
  "owner": "Administrator",
