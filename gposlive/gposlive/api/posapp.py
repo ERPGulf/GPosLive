@@ -1443,7 +1443,7 @@ def get_items_details(pos_profile, items_data):
         return _get_items_details(pos_profile, items_data)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_item_detail(item, doc=None, warehouse=None, price_list=None):
     item = json.loads(item)
     item["selling_price_list"] = price_list
