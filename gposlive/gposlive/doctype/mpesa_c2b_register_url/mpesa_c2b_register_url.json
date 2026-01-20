@@ -75,7 +75,7 @@
  "links": [],
  "modified": "2023-06-07 17:56:04.569137",
  "modified_by": "Administrator",
- "module": "POSAwesome",
+ "module": "GPosLive",
  "name": "Mpesa C2B Register URL",
  "naming_rule": "By fieldname",
  "owner": "Administrator",

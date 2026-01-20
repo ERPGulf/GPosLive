@@ -202,7 +202,7 @@
  "links": [],
  "modified": "2023-06-12 03:01:49.146706",
  "modified_by": "Administrator",
- "module": "POSAwesome",
+ "module": "GPosLive",
  "name": "POS Closing Shift",
  "naming_rule": "Expression (old style)",
  "owner": "Administrator",

@@ -310,7 +310,7 @@
  "index_web_pages_for_search": 1,
  "modified": "2021-07-25 17:09:55.634113",
  "modified_by": "Administrator",
- "module": "POSAwesome",
+ "module": "GPosLive",
  "name": "POS Offer",
  "owner": "Administrator",
  "permissions": [
