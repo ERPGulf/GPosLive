@@ -158,7 +158,7 @@ def update_opening_shift_data(data, pos_profile):
     data["stock_settings"] = {}
     data["stock_settings"].update({"allow_negative_stock": allow_negative_stock})
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_items(
     pos_profile, price_list=None, item_group="", search_value="", customer=None
 ):
@@ -552,7 +552,7 @@ def get_customer_group_condition(pos_profile):
     return cond % tuple(customer_groups)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_customer_names(pos_profile):
     pos_profile = json.loads(pos_profile)
     condition = ""
@@ -1441,7 +1441,7 @@ def get_items_details(pos_profile, items_data):
         return _get_items_details(pos_profile, items_data)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_item_detail(item, doc=None, warehouse=None, price_list=None):
     item = json.loads(item)
     item["selling_price_list"] = price_list
@@ -1671,7 +1671,7 @@ def apply_shipping_charges(invoice_doc):
 #     invoice_doc.apply_shipping_charge()
 #     return "done"
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_customer(
     customer_name,
     company,
