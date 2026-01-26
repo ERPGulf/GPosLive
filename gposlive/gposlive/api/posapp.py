@@ -552,7 +552,7 @@ def get_customer_group_condition(pos_profile):
     return cond % tuple(customer_groups)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_customer_names(pos_profile):
     pos_profile = json.loads(pos_profile)
     condition = ""
@@ -569,10 +569,8 @@ def get_customer_names(pos_profile):
         ),
         as_dict=1,
     )
-    # frappe.log_error("get_customer_names", customers)
     return {
         "customers": customers,
-        # "custom_profile_type": pos_profile_doc.custom_profile_type,
     }
 
 
@@ -1659,7 +1657,6 @@ def get_wholesale_rate(item_code, price_list, pos_profile=None):
 
 @frappe.whitelist()
 def apply_shipping_charges(invoice_doc):
-    # Proper ERPNext shipping apply call
     shipping_rule_name = invoice_doc.shipping_rule
     if shipping_rule_name:
         sr = frappe.get_doc("Shipping Rule", shipping_rule_name)
@@ -1674,7 +1671,7 @@ def apply_shipping_charges(invoice_doc):
 #     invoice_doc.apply_shipping_charge()
 #     return "done"
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_customer(
     customer_name,
     company,
@@ -1686,15 +1683,10 @@ def create_customer(
     birthday=None,
     customer_group=None,
     territory=None,
-    # custom_b2c=None,
-    # custom_buyer_id_type=None,
-    # custom_buyer_id=None,
     address_line1=None,
     address_line2=None,
     custom_building_number=None,
     pincode=None,
-
-    # customer_name_in_arabic=None,
 
 ):
     if customer_group == "Wholesale customers - عميل جملة":
@@ -1711,22 +1703,17 @@ def create_customer(
                 "tax_id": tax_id,
                 "mobile_no": mobile_no,
                 "email_id": email_id,
-                "posa_referral_code": referral_code, #referral_code
+                "posa_referral_code": referral_code, 
                 "posa_birthday": birthday,
                 "company": frappe.defaults.get_user_default("Company")
             }
         )
-        # if customer_group:
-        #     customer.customer_group = customer_group
         customer.customer_group = "All Customer Groups"
         if territory:
             customer.territory = territory
         customer.save(ignore_permissions=True)
 
         if address_line1:
-            # if not city:
-            #     frappe.throw(_("City is mandatory when address is provided."))
-            # else:
 
             address = frappe.get_doc({
                 "doctype": "Address",
@@ -1746,7 +1733,7 @@ def create_customer(
             if address_line2:
                 address.address_line2 = address_line2
             if custom_building_number:
-                address.custom_building_number = custom_building_number  # assuming you have this custom field
+                address.custom_building_number = custom_building_number
             if pincode:
                 address.pincode = pincode
 
