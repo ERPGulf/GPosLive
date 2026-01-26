@@ -263,6 +263,7 @@ fixtures = [
                     "POS Profile-posa_allow_mpesa_reconcile_payments",
                     "POS Profile-custom_use_shipping_rule",
                     "POS Profile-custom__allow_negative_stock",
+                    "Sales Invoice-custom_returned_item_note",
                 ),
             ]
         ],
