@@ -64,18 +64,6 @@
               </v-col>
 
               <v-col cols="6">
-                <v-select
-                  dense
-                  color="indigo"
-                  :label="$t('Referral Code') + ' *'"
-                  background-color="white"
-                  hide-details
-                  v-model="referral_code"
-                  :items="refcodes"
-                />
-              </v-col>
-
-              <v-col cols="6">
                 <v-text-field
                   dense
                   color="indigo"
@@ -181,36 +169,18 @@ export default {
     async save_customer_info() {
       const vm = this;
 
-      if (!/^9665\d{8}$/.test(vm.customer_info.mobile_no)) {
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Cannot create customer: Mobile number must be 9665XXXXXXXX (12 digits)."),
-          color: "error",
-        });
-        return;
-      }
+      //if (!/^9665\d{8}$/.test(vm.customer_info.mobile_no)) {
+      //  vm.eventBus.emit("show_message", {
+      //    text: vm.$t("Cannot create customer: Mobile number must be 9665XXXXXXXX (12 digits)."),
+      //    color: "error",
+      //  });
+      //  return;
+      //}
 
-
-
-
-      if (vm.customer_info.address_line1 && !vm.customer_info.city) {
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("City is mandatory when address is provided!"),
-          color: "error",
-        });
-        return;
-      }
 
       if (vm.customer_info.pincode && !/^\d{5}$/.test(vm.customer_info.pincode)) {
         vm.eventBus.emit("show_message", {
           text: vm.$t("Pincode must be exactly 5 digits!"),
-          color: "error",
-        });
-        return;
-      }
-
-      if (!vm.referral_code) {
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Referral code is mandatory for customers!"),
           color: "error",
         });
         return;
@@ -283,6 +253,9 @@ export default {
       };
       this.referral_code = data.posa_referral_code || "";
       this.original_customer_info = JSON.parse(JSON.stringify(this.customer_info));
+      if (!data?.name) {
+        return;
+      }
       frappe.call({
         method: "gposlive.gposlive.api.posapp.get_customer_address",
         args: { customer_name: data.name },

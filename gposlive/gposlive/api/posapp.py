@@ -1873,59 +1873,6 @@ def set_customer_info(customer, fieldname, value=""):
         contact_doc.save(ignore_version=True)
 
 
-# @frappe.whitelist()
-# def set_customer_info(customer, fieldname, value=""):
-#     address_fields = [
-#         "address_line1", "address_line2", "custom_building_number", "pincode", "city"
-#     ]
-    
-#     if fieldname in address_fields:
-#         address_name = frappe.db.get_value("Dynamic Link", {
-#             "link_doctype": "Customer",
-#             "link_name": customer,
-#             "parenttype": "Address"
-#         }, "parent")
-        
-#         if address_name:
-#             frappe.db.set_value("Address", address_name, fieldname, value)
-#         else:
-#             address = frappe.get_doc({
-#                 "doctype": "Address",
-#                 "address_title": customer,
-#                 "address_type": "Billing",
-#                 fieldname: value,
-#                 "links": [{"link_doctype": "Customer", "link_name": customer}]
-#             })
-#             address.insert(ignore_mandatory=True)
-#             frappe.db.set_value("Customer", customer, "customer_primary_address", address.name)
-#     else:
-#         frappe.db.set_value("Customer", customer, fieldname, value)
-
-#     contact = frappe.get_cached_value("Customer", customer, "customer_primary_contact") or ""
-#     # if contact:
-#     #     contact_doc = frappe.get_doc("Contact", contact)
-#     #     if fieldname == "email_id":
-#     #         contact_doc.set("email_ids", [{"email_id": value, "is_primary": 1}])
-#     #         frappe.db.set_value("Customer", customer, "email_id", value)
-#     #     elif fieldname == "mobile_no":
-#     #         contact_doc.set("phone_nos", [{"phone": value, "is_primary_mobile_no": 1}])
-#     #         frappe.db.set_value("Customer", customer, "mobile_no", value)
-#     #     contact_doc.save()\
-#     if contact:
-#         contact_doc = frappe.get_doc("Contact", contact)
-#         contact_doc.reload()  # Ensure latest version
-
-#         if fieldname == "email_id":
-#             contact_doc.set("email_ids", [{"email_id": value, "is_primary": 1}])
-#             frappe.db.set_value("Customer", customer, "email_id", value)
-#         elif fieldname == "mobile_no":
-#             contact_doc.set("phone_nos", [{"phone": value, "is_primary_mobile_no": 1}])
-#             frappe.db.set_value("Customer", customer, "mobile_no", value)
-
-#         contact_doc.save(ignore_version=True)
-
-
-
 @frappe.whitelist()
 def get_full_customer_info(customer_name):
     customer = frappe.get_doc("Customer", customer_name)
@@ -1960,35 +1907,6 @@ def get_customer_address(customer_name):
         limit_page_length=1
     )
     return address[0] if address else {}
-
-
-
-# @frappe.whitelist()
-# def search_invoices_for_return(invoice_name, company):
-#     invoices_list = frappe.get_list(
-#         "Sales Invoice",
-#         filters={
-#             "name": ["like", f"%{invoice_name}%"],
-#             "company": company,
-#             "docstatus": 1,
-#             "is_return": 0,
-#         },
-#         fields=["name"],
-#         limit_page_length=0,
-#         order_by="customer",
-#     )
-#     data = []
-#     is_returned = frappe.get_all(
-#         "Sales Invoice",
-#         filters={"return_against": invoice_name, "docstatus": 1},
-#         fields=["name"],
-#         order_by="customer",
-#     )
-#     if len(is_returned):
-#         return data
-#     for invoice in invoices_list:
-#         data.append(frappe.get_doc("Sales Invoice", invoice["name"]))
-#     return data
 
 # @frappe.whitelist()
 # def search_invoices_for_return(invoice_name, company):

@@ -571,7 +571,16 @@ export default {
             this.pos_profile.posa_hide_variants_items
             ? filtred_group_list.filter((item) => !item.variant_of).slice(0, 50)
             : filtred_group_list.slice(0, 50);
-        } else {
+        } 
+        if (this.pos_profile.custom_search_using_barcode_only) {
+          filtred_list = filtred_group_list.filter((item) =>
+            item.item_barcode?.some(
+              (barcodeData) => barcodeData.barcode === this.search
+            )
+          );
+          return filtred_list.slice(0, 50);
+        }
+
           filtred_list = filtred_group_list.filter((item) =>
             item.item_code
               .toLowerCase()
@@ -654,7 +663,6 @@ export default {
             this.pos_profile.posa_hide_variants_items
             ? final_list.filter((item) => !item.variant_of).slice(0, 50)
             : final_list.slice(0, 50);
-        }
       } else {
         return this.items.slice(0, 50);
       }

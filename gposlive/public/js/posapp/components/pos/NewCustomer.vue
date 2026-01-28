@@ -285,15 +285,15 @@ export default {
           pincode: this.pincode,
         };
 
-        if (!/^9665\d{8}$/.test(this.mobile_no)) {
-          this.eventBus.emit("show_message", {
-            text: __(
-              "Cannot create customer: Mobile number must be 9665XXXXXXXX (12 digits)."
-            ),
-            color: "error",
-          });
-          return;
-        }
+        //if (!/^9665\d{8}$/.test(this.mobile_no)) {
+        //  this.eventBus.emit("show_message", {
+        //    text: __(
+        //      "Cannot create customer: Mobile number must be 9665XXXXXXXX (12 digits)."
+        //    ),
+        //    color: "error",
+        //  });
+        //  return;
+        //}
    
 
 
@@ -341,7 +341,13 @@ export default {
 
   created() {
     this.eventBus.on("prefill_phone", (phone) => {
-      this.mobile_no = phone; 
+      let value = phone.replace(/\D/g, "");
+
+      if (!value.startsWith(this.fixedText)) {
+        value = this.fixedText + value.slice(-8);
+      }
+
+      this.mobile_no = value;
     });
 
     this.eventBus.on("open_new_customer", () => {

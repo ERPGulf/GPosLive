@@ -32,7 +32,7 @@
         class="mt-2"
         @click="add_from_search"
       >
-        + ADD CUSTOMER ({{ searchQuery }})
+        + ADD CUSTOMER (9665{{ searchQuery.slice(-8) }})
       </v-btn>
     </template>
 
@@ -92,6 +92,14 @@ export default {
   methods: {
 
     add_from_search() {
+      let phone = this.searchQuery?.trim() || "";
+
+      phone = phone.replace(/\D/g, "");
+
+      if (!phone.startsWith("966")) {
+        phone = phone.replace(/^0/, "");
+        phone = "9665" + phone.slice(-8);
+      }
       this.eventBus.emit("open_new_customer");
       this.$nextTick(() => {
         this.eventBus.emit("prefill_phone", this.searchQuery);
