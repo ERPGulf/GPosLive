@@ -264,7 +264,9 @@ fixtures = [
                     "POS Profile-custom_use_shipping_rule",
                     "POS Profile-custom__allow_negative_stock",
                     "Sales Invoice-custom_returned_item_note",
-                    "POS Profile-custom_search_using_barcode_only"
+                    "POS Profile-custom_search_using_barcode_only",
+                    "Sales Invoice Payment-custom_transaction_id",
+                    "POS Payment Method-custom_make_transaction_number_mandatory"
                 ),
             ]
         ],

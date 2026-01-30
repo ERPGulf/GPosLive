@@ -602,6 +602,19 @@
         <v-divider></v-divider>
         <v-row class="pb-0 mb-2" align="start">
           <v-col cols="12">
+            <v-text-field
+              density="compact"
+              variant="outlined"
+              color="primary"
+              :label="$t('Transaction Number')"
+              bg-color="white"
+              hide-details
+              v-model="transaction_number"
+            ></v-text-field>
+          </v-col>
+        </v-row>
+        <v-row class="pb-0 mb-2" align="start">
+          <v-col cols="12">
             <v-autocomplete
               density="compact"
               clearable
@@ -717,6 +730,7 @@ import format from "../../format";
 export default {
   mixins: [format],
   data: () => ({
+    transaction_number: "",
     custom_device_enabled: false,
     shipping_charge: 0,
     credit_card_approved: false,
@@ -933,6 +947,42 @@ export default {
         }
       }
 
+      
+      // Loop through POS Profile payment rules
+      for (const rule of this.pos_profile?.payments || []) {
+        if (!rule.custom_make_transaction_number_mandatory) continue;
+
+        // Find matching payment row in invoice that is actually used
+        const invoicePayment = this.invoice_doc?.payments?.find(
+          (p) =>
+            p.mode_of_payment === rule.mode_of_payment &&
+            flt(p.amount) > 0
+        );
+
+        // Only validate if this payment mode is used
+        if (invoicePayment && !this.transaction_number) {
+          this.eventBus.emit("show_message", {
+            text: this.$t(
+              "Transaction number is mandatory for {0}",
+              [rule.mode_of_payment]
+            ),
+            color: "error",
+          });
+          frappe.utils.play_sound("error");
+          return;
+        }
+      }
+
+
+      if (this.pos_profile.custom_make_transaction_number_mandatory && !this.transaction_number) {
+          this.eventBus.emit("show_message", {
+            text: `Transaction number is mandatory`,
+            color: "error",
+          });
+          frappe.utils.play_sound("error");
+          return;
+      }
+
       //if (!this.sales_person) {
       //  this.eventBus.emit("show_message", {
       //    text: this.$t("Please select a Sales Person before submitting."),
@@ -1090,6 +1140,7 @@ export default {
       data["redeemed_customer_credit"] = this.redeemed_customer_credit;
       data["customer_credit_dict"] = this.customer_credit_dict;
       data["is_cashback"] = this.is_cashback;
+      data["transaction_number"] = this.transaction_number;
 
       const vm = this;
       frappe.call({

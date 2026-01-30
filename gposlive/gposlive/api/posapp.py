@@ -1045,6 +1045,13 @@ def submit_invoice(invoice, data):
             data.get("due_date"),
             update_modified=False,
         )
+         
+    transaction_number = data.get("transaction_number")
+    for p in invoice_doc.payments:
+        if (p.mode_of_payment):
+            if transaction_number:
+                p.custom_transaction_id = transaction_number
+
 
     if frappe.get_value(
         "POS Profile",
@@ -1110,8 +1117,7 @@ def submit_invoice(invoice, data):
             if p.mode_of_payment and p.mode_of_payment.lower() == "credit card" and value=="1":
                 if not p.custom_transaction_id and data.get("credit_card_transaction_id"):
                     p.custom_transaction_id = data["credit_card_transaction_id"]
-
-
+           
         invoice_doc.submit()
         redeeming_customer_credit(
             invoice_doc, data, is_payment_entry, total_cash, cash_account, payments
