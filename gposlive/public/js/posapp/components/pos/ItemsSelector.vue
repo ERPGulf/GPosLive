@@ -575,7 +575,9 @@ export default {
         if (this.pos_profile.custom_search_using_barcode_only) {
           filtred_list = filtred_group_list.filter((item) =>
             item.item_barcode?.some(
-              (barcodeData) => barcodeData.barcode === this.search
+              (barcodeData) =>
+                barcodeData.barcode &&
+                barcodeData.barcode.includes(this.search)
             )
           );
           return filtred_list.slice(0, 50);
@@ -639,7 +641,9 @@ export default {
           if (filtred_list.length === 0) {
             filtred_list = filtred_group_list.filter((item) =>
               item.item_barcode.some(
-                (barcodeData) => barcodeData.barcode === this.search
+                (barcodeData) =>                 
+                barcodeData.barcode &&
+                barcodeData.barcode.includes(this.search)
               )
             );
           }

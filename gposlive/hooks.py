@@ -266,7 +266,8 @@ fixtures = [
                     "Sales Invoice-custom_returned_item_note",
                     "POS Profile-custom_search_using_barcode_only",
                     "Sales Invoice Payment-custom_transaction_id",
-                    "POS Payment Meth"
+                    "POS Payment Method- custom_make_transaction_number_mandatory",
+                    "Sales Invoice Item-custom_additional_notes",
                 ),
             ]
         ],

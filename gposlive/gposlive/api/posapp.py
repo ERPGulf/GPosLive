@@ -729,6 +729,13 @@ def get_shipping_rule_names():
     frappe.log_error("shipping_rules",shipping_rules)
 
     return shipping_rules
+@frappe.whitelist()
+def get_additional_notes_options():
+    df = frappe.get_meta("Sales Invoice Item").get_field("custom_additional_notes")
+    if not df or not df.options:
+        return []
+    return [opt.strip() for opt in df.options.split("\n") if opt.strip()]
+
 
 @frappe.whitelist()
 def update_invoice(data):

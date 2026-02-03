@@ -522,22 +522,24 @@
                     </v-date-picker>
                   </v-menu>
                 </v-col>
+
+
                 <v-col
                   cols="8"
                   v-if="pos_profile.posa_display_additional_notes"
                 >
-                  <v-textarea
-                    class="pa-0"
-                    variant="outlined"
+                  <v-select
                     density="compact"
-                    clearable
+                    variant="outlined"
                     color="primary"
-                    auto-grow
-                    rows="1"
+                    bg-color="white"
+                    clearable
                     :label="$t('Additional Notes')"
-                    v-model="item.posa_notes"
-                    :model-value="item.posa_notes"
-                  ></v-textarea>
+                    :items="additional_notes_options"
+                    v-model="item.custom_additional_notes"
+                    hide-details
+                  />
+
                 </v-col>
               </v-row>
             </td>
@@ -783,6 +785,7 @@ export default {
   mixins: [format],
   data() {
     return {
+      additional_notes_options: [],
       returned_item_note: null,
       returned_item_note_options: [],
       custom_discount_level: null,
@@ -891,6 +894,18 @@ export default {
   },
 
   methods: {
+
+    async getAdditionalNotesOptions() {
+      try {
+        const res = await frappe.call({
+          method: "gposlive.gposlive.api.posapp.get_additional_notes_options",
+        });
+        this.additional_notes_options = res.message || [];
+      } catch (e) {
+        console.error("Failed to load additional notes options", e);
+      }
+    },
+
     async getReturnedItemNoteOptions() {
       try {
         const res = await frappe.call({
@@ -1160,6 +1175,7 @@ export default {
       new_item.posa_is_replace = item.posa_is_replace || null;
       new_item.is_free_item = 0;
       new_item.posa_notes = "";
+      item.custom_additional_notes = item.custom_additional_notes || null;
       new_item.posa_delivery_date = "";
       new_item.posa_row_id = this.makeid(20);
       if (
@@ -1548,6 +1564,8 @@ export default {
           posa_notes: item.posa_notes,
           posa_delivery_date: item.posa_delivery_date,
           price_list_rate: item.price_list_rate,
+          custom_additional_notes: item.custom_additional_notes || null,
+
         };
 
         items_list.push(new_item);
@@ -3164,6 +3182,7 @@ export default {
   },
 
   mounted() {
+    this.getAdditionalNotesOptions();
     this.getReturnedItemNoteOptions();
     this.eventBus.on("test_mounting", (item) => {
       console.log("test_mounting");

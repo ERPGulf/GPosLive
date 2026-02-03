@@ -963,24 +963,13 @@ export default {
         if (invoicePayment && !this.transaction_number) {
           this.eventBus.emit("show_message", {
             text: this.$t(
-              "Transaction number is mandatory for {0}",
-              [rule.mode_of_payment]
+              "Transaction number is mandatory"
             ),
             color: "error",
           });
           frappe.utils.play_sound("error");
           return;
         }
-      }
-
-
-      if (this.pos_profile.custom_make_transaction_number_mandatory && !this.transaction_number) {
-          this.eventBus.emit("show_message", {
-            text: `Transaction number is mandatory`,
-            color: "error",
-          });
-          frappe.utils.play_sound("error");
-          return;
       }
 
       //if (!this.sales_person) {
