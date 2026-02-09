@@ -4794,7 +4794,7 @@
   "collapsible": 0,
   "collapsible_depends_on": null,
   "columns": 0,
-  "default": null,
+  "default": "1",
   "depends_on": null,
   "description": "Use Search Limit for Items",
   "docstatus": 0,
