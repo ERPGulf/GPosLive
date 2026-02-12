@@ -557,7 +557,10 @@ export default {
 
   computed: {
     filtered_items() {
-      this.search = this.get_search(this.first_search);
+      this.search = (this.get_search(this.first_search) || "")
+        .toLowerCase()
+        .trim();
+
       if (this.pos_profile.pose_use_limit_search) {
         let filtred_list = [];
         let filtred_group_list =
@@ -580,7 +583,7 @@ export default {
             item.item_barcode?.some(
               (barcodeData) =>
                 barcodeData.barcode &&
-                barcodeData.barcode.includes(this.search)
+                barcodeData.barcode.toLowerCase().includes(this.search)
             )
           );
           return filtred_list.slice(0, 50);
@@ -646,7 +649,7 @@ export default {
               item.item_barcode.some(
                 (barcodeData) =>                 
                 barcodeData.barcode &&
-                barcodeData.barcode.includes(this.search)
+                barcodeData.barcode.toLowerCase().includes(this.search)
               )
             );
           }
