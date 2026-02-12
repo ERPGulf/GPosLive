@@ -266,7 +266,7 @@ export default {
               rate: item.rate || 0,
               original_rate: item.rate || 0,
             }));
-            console.log("Items fetched:", vm.items);
+            console.log("Items fetched :", vm.items);
 
             vm.update_item_rates_by_discount_level();
 
