@@ -524,9 +524,12 @@ export default {
         });
         frappe.utils.play_sound("error");
       } else {
-        this.enter_event();
-        this.debounce_search = null;
-        this.search = null;
+        const added = this.enter_event();
+        if (added) {
+          this.debounce_search = null;
+          this.search = null;
+          this.first_search = null;
+        }
       }
     },
     generateWordCombinations(inputString) {
