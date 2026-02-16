@@ -1175,7 +1175,7 @@ export default {
       this.invoice_doc.payments.forEach((p) => {
         p.amount =
           p.idx === payment.idx
-            ? this.invoice_doc.grand_total
+            ? this.invoice_doc.rounded_total
             : 0;
       });
 
