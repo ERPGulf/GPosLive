@@ -2668,6 +2668,7 @@ export default {
           this.removeApplyOffer(invoiceOffer);
         }
       });
+
       offers.forEach((offer) => {
         const existOffer = this.posa_offers.find(
           (invoiceOffer) => invoiceOffer.row_id == offer.row_id
@@ -3248,8 +3249,23 @@ export default {
     });
     this.eventBus.on("update_invoice_coupons", (data) => {
       this.posa_coupons = data;
-      this.handelOffers();
+        // ✅ FORCE coupon-based offers to apply
+        this.$nextTick(() => {
+          this.posOffers.forEach(offer => {
+            if (
+              offer.coupon_based &&
+              this.checkOfferCoupon(offer)
+            ) {
+              offer.offer_applied = true;
+            }
+          });
+          this.handelOffers();
+        });
     });
+    //this.eventBus.on("update_invoice_coupons", (data) => {
+    //  this.posa_coupons = data;
+    //  this.handelOffers();
+    //});
     this.eventBus.on("set_all_items", (data) => {
       this.allItems = data;
       this.items.forEach((item) => {

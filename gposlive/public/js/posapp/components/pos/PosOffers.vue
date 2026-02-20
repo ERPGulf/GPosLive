@@ -173,9 +173,13 @@ export default {
     removeOffers(ids) {
       this.pos_offers = this.pos_offers.filter((o) => !ids.includes(o.row_id));
     },
-    handelOffers() {
-      this.eventBus.emit("update_invoice_offers", this.pos_offers.filter(o => o.offer_applied));
-    },
+     handelOffers() {
+      const applyedOffers = this.pos_offers.filter((offer) => offer.offer_applied);
+      this.eventBus.emit("update_invoice_offers", applyedOffers);
+    },   
+    //handelOffers() {
+    //  this.eventBus.emit("update_invoice_offers", this.pos_offers.filter(o => o.offer_applied));
+    //},
     handleNewLine(str) {
       return str ? str.replace(/(?:\r\n|\r|\n)/g, "<br />") : "";
     },

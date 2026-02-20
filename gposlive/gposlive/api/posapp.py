@@ -880,6 +880,49 @@ def update_invoice(data):
     #     invoice_doc.grand_total = 0
     #     invoice_doc.rounded_total = 0
     # Apply wholesale pricing based on customer's custom_discount_level
+
+    posa_coupons = data.get("posa_coupons", [])
+    frappe.log_error("posa_coupons",posa_coupons)
+    if posa_coupons and posa_coupons[0].get("coupon"):
+        pos_profile_doc = frappe.get_doc("POS Profile", invoice_doc.pos_profile)
+        max_discount_percentage = flt(pos_profile_doc.posa_max_discount_allowed or 0.0)
+        total_discount_amount = 0.0
+        invoice_total = flt(invoice_doc.grand_total or 0.0)
+
+        try:
+            coupon_doc = frappe.get_doc("POS Coupon", posa_coupons[0].get("coupon"))
+        except frappe.DoesNotExistError:
+            frappe.throw(_("Invalid coupon applied."))
+
+
+        invoice_doc.set("posa_coupons", [])
+
+        # for offer_row in coupon_doc.pos_offers:
+        pos_offer = frappe.get_doc("POS Offer", coupon_doc.pos_offer)
+        frappe.log_error("pos_offer",pos_offer)
+        
+        # ✅ Append to child table with mandatory pos_offer field
+        coupon_row = invoice_doc.append("posa_coupons", {})
+        coupon_row.coupon = coupon_doc.name
+        coupon_row.pos_offer = pos_offer.name 
+        
+        if pos_offer.discount_type == "Discount Percentage":
+            total_discount_amount += (flt(pos_offer.discount_percentage) * invoice_total / 100.0)
+        elif pos_offer.discount_type == "Discount Amount":
+            total_discount_amount += flt(pos_offer.discount_amount)
+
+        effective_discount_percentage = (
+            (total_discount_amount / invoice_total) * 100.0 if invoice_total else 0.0
+        )
+
+        if effective_discount_percentage > max_discount_percentage:
+            frappe.throw(
+                _("Total discount from POS Offers ({0}%) exceeds allowed maximum ({1}%) in POS Profile. Coupon cannot be applied.")
+                .format(
+                    frappe.format_value(effective_discount_percentage, "Percent"),
+                    frappe.format_value(max_discount_percentage, "Percent")
+                )
+            )
     invoice_doc.save()
     frappe.db.commit()
     if(invoice_doc.shipping_rule):
@@ -920,27 +963,36 @@ def submit_invoice(invoice, data):
     price_list = frappe.get_value("POS Profile", invoice_doc.pos_profile, "selling_price_list")
     
     for item in invoice_doc.items:
-        rate = get_price_list_rate_for(
-            {
-                "price_list": price_list,
-                "customer": invoice_doc.customer,
-                "transaction_date": invoice_doc.posting_date,
-                "uom": item.uom,
-                "qty": item.qty,
-                "conversion_factor": item.conversion_factor,
-                "stock_uom": item.stock_uom,
-                "price_list_uom_dependant": 0,
-            },
-            item.item_code,
-        ) or 0
+        item.base_rate = item.rate
+        item.base_price_list_rate = item.price_list_rate
+        item.amount = item.rate * item.qty
+        item.base_amount = item.amount
 
-        item.rate = rate
-        item.price_list_rate = rate
-        item.base_rate = rate
-        item.base_price_list_rate = rate
-        item.amount = rate * item.qty
-        item.base_amount = rate * item.qty
         add_taxes_from_tax_template(item, invoice_doc)
+
+    
+    # for item in invoice_doc.items:
+    #     rate = get_price_list_rate_for(
+    #         {
+    #             "price_list": price_list,
+    #             "customer": invoice_doc.customer,
+    #             "transaction_date": invoice_doc.posting_date,
+    #             "uom": item.uom,
+    #             "qty": item.qty,
+    #             "conversion_factor": item.conversion_factor,
+    #             "stock_uom": item.stock_uom,
+    #             "price_list_uom_dependant": 0,
+    #         },
+    #         item.item_code,
+    #     ) or 0
+
+    #     item.rate = rate
+    #     item.price_list_rate = rate
+    #     item.base_rate = rate
+    #     item.base_price_list_rate = rate
+    #     item.amount = rate * item.qty
+    #     item.base_amount = rate * item.qty
+    #     add_taxes_from_tax_template(item, invoice_doc)
 
     if invoice.get("posa_delivery_date"):
         invoice_doc.update_stock = 0
