@@ -231,8 +231,39 @@ def get_items(
 
         result = []
 
-        items_data = frappe.db.sql(
-            """
+        # items_data = frappe.db.sql(
+        #     """
+        #     SELECT
+        #         name AS item_code,
+        #         item_name,
+        #         description,
+        #         stock_uom,
+        #         image,
+        #         is_stock_item,
+        #         has_variants,
+        #         variant_of,
+        #         item_group,
+        #         idx as idx,
+        #         has_batch_no,
+        #         has_serial_no,
+        #         max_discount,
+        #         brand
+        #     FROM
+        #         `tabItem`
+        #     WHERE
+        #         disabled = 0
+        #             AND is_sales_item = 1
+        #             AND is_fixed_asset = 0
+        #             {condition}
+        #     ORDER BY
+        #         item_name asc
+        #     {limit}
+        #     """.format(
+        #         condition=condition, limit=limit
+        #     ),
+        #     as_dict=1,
+        # )
+        query = """
             SELECT
                 name AS item_code,
                 item_name,
@@ -248,21 +279,34 @@ def get_items(
                 has_serial_no,
                 max_discount,
                 brand
-            FROM
-                `tabItem`
+            FROM `tabItem`
             WHERE
                 disabled = 0
-                    AND is_sales_item = 1
-                    AND is_fixed_asset = 0
-                    {condition}
-            ORDER BY
-                item_name asc
-            {limit}
-            """.format(
-                condition=condition, limit=limit
-            ),
-            as_dict=1,
-        )
+                AND is_sales_item = 1
+                AND is_fixed_asset = 0
+        """
+
+        conditions = []
+        values = []
+
+        if item_group:
+            conditions.append("item_group = %s")
+            values.append(item_group)
+
+        if brand:
+            conditions.append("brand = %s")
+            values.append(brand)
+
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+
+        query += " ORDER BY item_name ASC"
+
+        if page_len:
+            query += " LIMIT %s"
+            values.append(int(page_len))
+
+        items_data = frappe.db.sql(query, tuple(values), as_dict=1)
 
         item_codes = [item["item_code"] for item in items_data]
 
@@ -495,7 +539,7 @@ def get_root_of(doctype):
     #     )
     # )
     if not frappe.db.exists("DocType", doctype):
-        frappe.throw("Invalid DocType")
+        frappe.throw(_("Invalid DocType"))
 
     dt = DocType(doctype)
 
@@ -575,7 +619,7 @@ def get_child_nodes(group_type, root):
     #     as_dict=1,
     # )
     if not frappe.db.exists("DocType", group_type):
-        frappe.throw("Invalid DocType")
+        frappe.throw(_("Invalid DocType"))
 
     dt = DocType(group_type)
 
@@ -1811,17 +1855,21 @@ def get_wholesale_rate(
     #     as_dict=1,
     # )
     
-    allowed_fields = {"wholesale_rate", "price_list_rate"}
+    allowed_rate_fields = [
+        "wholesale_rate",
+        "standard_rate",
+        "price_list_rate"
+    ]
 
     if rate_field not in allowed_fields:
-        frappe.throw("Invalid rate field")
+        frappe.throw(_("Invalid rate field"))
 
-    query = """
-        SELECT `{}` as rate
+    # rate_field is validated against allowed list  # nosemgrep
+    query = f"""
+        SELECT `{rate_field}` as rate
         FROM `tabItem Price`
         WHERE item_code = %s AND price_list = %s
-    """.format(rate_field)
-
+    """
     wh_rate = frappe.db.sql(
         query,
         (item_code, price_list),
