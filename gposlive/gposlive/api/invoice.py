@@ -78,12 +78,20 @@ def create_sales_order(doc):
             url = frappe.utils.get_url_to_form(
                 sales_order_doc.doctype, sales_order_doc.name
             )
-            msgprint = "Sales Order Created at <a href='{0}'>{1}</a>".format(
-                url, sales_order_doc.name
-            )
             frappe.msgprint(
-                _(msgprint), title="Sales Order Created", indicator="green", alert=True
+                _("Sales Order Created at <a href='{0}'>{1}</a>").format(
+                    url, sales_order_doc.name
+                ),
+                title=_("Sales Order Created"),
+                indicator="green",
+                alert=True,
             )
+            # msgprint = "Sales Order Created at <a href='{0}'>{1}</a>".format(
+            #     url, sales_order_doc.name
+            # )
+            # frappe.msgprint(
+            #     _(msgprint), title="Sales Order Created", indicator="green", alert=True
+            # )
             i = 0
             for item in sales_order_doc.items:
                 doc.items[i].sales_order = sales_order_doc.name

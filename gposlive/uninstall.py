@@ -21,4 +21,4 @@ def clear_custom_fields_and_properties():
                     frappe.db.delete("Property Setter", filter)
                     print("Deleted Property Setter: ", filter)
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep - required to persist uninstall cleanup changes

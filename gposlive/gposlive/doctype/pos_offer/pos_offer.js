@@ -16,17 +16,17 @@ frappe.ui.form.on('POS Offer', {
 	validate: function (frm) {
 		if (frm.doc.apply_on === 'Transaction') {
 			if (!frm.doc.min_amt > 0) {
-				frappe.throw("Min Amount most be more then zero");
+				frappe.throw(__("Min Amount must be more than zero"));
 			}
 		}
 		if (frm.doc.offer === 'Give Product') {
 			if (!frm.doc.given_qty > 0) {
-				frappe.throw("Given Quantity most be more then zero");
+				frappe.throw(__("Given Quantity must be more than zero"));
 			}
 		}
 		if (frm.doc.offer === 'Loyalty Point') {
 			if (!frm.doc.loyalty_points > 0) {
-				frappe.throw("Loyalty Points most be more then zero");
+				frappe.throw(__("Loyalty Points must be more than zero"));
 			}
 		}
 		if (frm.doc.apply_type === 'Item Group' && frm.doc.offer === 'Give Product' && !frm.doc.replace_item && !frm.doc.replace_cheapest_item) {

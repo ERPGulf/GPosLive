@@ -19,7 +19,7 @@ class DeliveryCharges(Document):
             if row.pos_profile not in profiles:
                 profiles.append(row.pos_profile)
             else:
-                frappe.throw("Duplicate POS Profile in Delivery Charges")
+                frappe.throw(_("Duplicate POS Profile in Delivery Charges"))
         self.set_profiles_list(profiles)
 
     def set_profiles_list(self, profiles_list):
