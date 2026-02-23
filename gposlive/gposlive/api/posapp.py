@@ -1533,7 +1533,6 @@ def delete_invoice(invoice: str) -> str:
 
 
 @frappe.whitelist()
-# def get_items_details(pos_profile, items_data):
 def get_items_details(pos_profile: str, items_data: str) -> list:
     _pos_profile = json.loads(pos_profile)
     ttl = _pos_profile.get("posa_server_cache_duration")
@@ -1627,7 +1626,6 @@ def get_items_details(pos_profile: str, items_data: str) -> list:
 
 
 @frappe.whitelist()
-# def get_item_detail(item, doc=None, warehouse=None, price_list=None):
 def get_item_detail(
     item: str,
     doc: dict | None = None,
@@ -1700,7 +1698,6 @@ def get_item_detail(
 
 
 @frappe.whitelist()
-# def get_item_details_by_itemcode(item_code,profile,parent=None):
 def get_item_details_by_itemcode(
     item_code: str,
     profile: str,
@@ -1815,7 +1812,6 @@ def get_item_details_by_itemcode(
 
 # @frappe.whitelist(allow_guest=True)
 @frappe.whitelist()
-# def get_stock_availability(item_code, warehouse):
 def get_stock_availability(item_code: str, warehouse: str) -> dict:
     latest_sle = frappe.db.sql(
         """select actual_qty
@@ -1830,7 +1826,6 @@ def get_stock_availability(item_code: str, warehouse: str) -> dict:
 
 
 @frappe.whitelist()
-# def get_wholesale_rate(item_code, price_list, pos_profile=None):
 def get_wholesale_rate(
     item_code: str,
     price_list: str,
@@ -1854,22 +1849,23 @@ def get_wholesale_rate(
     #     (item_code, price_list),
     #     as_dict=1,
     # )
-    
-    allowed_rate_fields = [
-        "wholesale_rate",
-        "standard_rate",
-        "price_list_rate"
-    ]
+    allowed_rate_fields = {
+        "wholesale_rate": "`wholesale_rate`",
+        "standard_rate": "`standard_rate`",
+        "price_list_rate": "`price_list_rate`",
+    }
 
-    if rate_field not in allowed_fields:
+    if rate_field not in allowed_rate_fields:
         frappe.throw(_("Invalid rate field"))
 
-    # rate_field is validated against allowed list  # nosemgrep
-    query = f"""
-        SELECT `{rate_field}` as rate
+    column = allowed_rate_fields[rate_field]
+
+    query = """
+        SELECT {column} as rate
         FROM `tabItem Price`
         WHERE item_code = %s AND price_list = %s
-    """
+    """.replace("{column}", column)  # nosemgrep: column validated via whitelist
+
     wh_rate = frappe.db.sql(
         query,
         (item_code, price_list),
@@ -1878,9 +1874,7 @@ def get_wholesale_rate(
 
     return wh_rate[0].rate if wh_rate and wh_rate[0].rate else 0
 
-
 @frappe.whitelist()
-# def apply_shipping_charges(invoice_doc):
 def apply_shipping_charges(invoice_doc: str) -> str:
     shipping_rule_name = invoice_doc.shipping_rule
     if shipping_rule_name:
@@ -2326,7 +2320,7 @@ def get_offers(profile: str) -> list:
         (pos_profile is NULL OR pos_profile  = '' OR  pos_profile = %(pos_profile)s) AND
         (warehouse is NULL OR warehouse  = '' OR  warehouse = %(warehouse)s) AND
         (valid_from is NULL OR valid_from  = '' OR  valid_from <= %(valid_from)s) AND
-        (valid_upto is NULL OR valid_from  = '' OR  valid_upto >= %(valid_upto)s)
+        (valid_upto is NULL OR valid_upto  = '' OR  valid_upto >= %(valid_upto)s)
     """,
         values=values,
         as_dict=1,
@@ -2349,17 +2343,15 @@ def get_customer_addresses(customer: str) -> list:
             address.address_type
         FROM `tabAddress` as address
         INNER JOIN `tabDynamic Link` AS link
-				ON address.name = link.parent
+            ON address.name = link.parent
         WHERE link.link_doctype = 'Customer'
-            AND link.link_name = '{0}'
+            AND link.link_name = %s
             AND address.disabled = 0
         ORDER BY address.name
-        """.format(
-            customer
-        ),
-        as_dict=1,
+        """,
+        (customer,),
+        as_dict=True,
     )
-
 @frappe.whitelist()
 def make_address(
     name: str,
