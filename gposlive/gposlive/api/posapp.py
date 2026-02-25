@@ -35,7 +35,7 @@ from gposlive.gposlive.doctype.delivery_charges.delivery_charges import (
     get_applicable_delivery_charges as _get_applicable_delivery_charges,
 )
 from frappe.utils.caching import redis_cache
-
+from frappe.query_builder import DocType
 
 @frappe.whitelist()
 def get_opening_dialog_data():
@@ -379,22 +379,10 @@ def get_items(
                 ],
                 order_by="valid_from ASC, valid_upto DESC",
             )
-            # frappe.log_error("Wholesale Rate", item_prices_data)
-
             item_prices = {}
             for d in item_prices_data:
                 item_prices.setdefault(d.item_code, {})
                 item_prices[d.item_code][d.get("uom") or "None"] = d
-
-            # 🔥🔥🔥 Add POS Profile Logic Here
-            # wholesale_profiles = [
-            #     "Wholesale POS",
-            #     "Wholesale - Western",
-            #     "Wholesale - Eastern",
-            #     "Wholesale - Central",
-            #     "Orange Station POS",
-            #     "Wholesale Central 2 POS"
-            # ]
 
             for item in items_data:
                 item_code = item.item_code
@@ -474,11 +462,6 @@ def get_items(
                 if posa_display_items_in_stock and (not item_stock_qty or item_stock_qty < 0):
                     pass
                 else:
-                    # 👇👇 Correct rate selection depending on POS profile
-                    # if pos_profile.get("name") in wholesale_profiles:
-                    #     wholesale_rate = _pos_profile.get("custom_wholesale_rate") or "wholesale_rate"
-                    #     item_pos_rate = item_price.get(wholesale_rate) or 0
-                    # else:
                     item_pos_rate = item_price.get("price_list_rate") or 0
 
                     row = {}
@@ -497,21 +480,11 @@ def get_items(
                             "alternative_items": alternative_items or [],
                         }
                     )
-                    # Get all wholesale rates from item_price
-                    # item_wholesale_rate = item_price.get("wholesale_rate") or 0
-                    # item_wholesale_rate2 = item_price.get("wholesale_rate2") or 0
-                    # item_wholesale_rate3 = item_price.get("wholesale_rate3") or 0
-
                     row.update({
                         "rate": item_pos_rate,
-                        # "wholesale_rate": item_wholesale_rate,
-                        # "wholesale_rate2": item_wholesale_rate2,
-                        # "wholesale_rate3": item_wholesale_rate3,
                     })
 
                     result.append(row)
-
-        # frappe.log_error("✅ Final result", result)
         return result
 
     if _pos_profile.get("posa_use_server_cache"):
