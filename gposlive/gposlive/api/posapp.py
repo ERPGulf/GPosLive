@@ -302,9 +302,9 @@ def get_items(
 
         query += " ORDER BY item_name ASC"
 
-        if page_len:
-            query += " LIMIT %s"
-            values.append(int(page_len))
+        # if page_len:
+        #     query += " LIMIT %s"
+        #     values.append(int(page_len))
 
         items_data = frappe.db.sql(query, tuple(values), as_dict=1)
 
