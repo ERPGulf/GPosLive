@@ -8,6 +8,7 @@ import json
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from typing import Any
 
 
 class POSClosingShift(Document):
@@ -29,7 +30,7 @@ class POSClosingShift(Document):
                 ).format(
                     frappe.bold(_("already exists")),
                     frappe.bold(self.user),
-                )
+                ),
                 title=_("Invalid Period"),
             )
 

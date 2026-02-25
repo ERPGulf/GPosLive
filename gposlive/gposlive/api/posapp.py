@@ -817,7 +817,6 @@ def add_taxes_from_tax_template(item, parent_doc):
 
 
 @frappe.whitelist()
-# def update_invoice_from_order(data):
 def update_invoice_from_order(data: str) -> dict:
     data = json.loads(data)
     invoice_doc = frappe.get_doc("Sales Invoice", data.get("name"))
@@ -826,7 +825,6 @@ def update_invoice_from_order(data: str) -> dict:
     return invoice_doc
 
 
-# @frappe.whitelist(allow_guest=True)
 @frappe.whitelist()
 def get_shipping_rule_names():
 
@@ -851,7 +849,6 @@ def get_additional_notes_options():
 
 
 @frappe.whitelist()
-# def update_invoice(data):
 def update_invoice(data: str) -> dict:
     data = json.loads(data)
     
@@ -1052,7 +1049,6 @@ def update_invoice(data: str) -> dict:
 
 
 @frappe.whitelist()
-# def submit_invoice(invoice, data):
 def submit_invoice(invoice: str, data: str) -> dict:
     data = json.loads(data)
     invoice = json.loads(invoice)
@@ -1891,23 +1887,6 @@ def apply_shipping_charges(invoice_doc: str) -> str:
 #     return "done"
 
 @frappe.whitelist()
-# def create_customer(
-#     customer_name,
-#     company,
-#     tax_id,
-#     mobile_no,
-#     email_id,
-#     city,
-#     referral_code=None,
-#     birthday=None,
-#     customer_group=None,
-#     territory=None,
-#     address_line1=None,
-#     address_line2=None,
-#     custom_building_number=None,
-#     pincode=None,
-
-# ):
 def create_customer(
     customer_name: str,
     company: str,
@@ -1943,7 +1922,7 @@ def create_customer(
                 "company": frappe.defaults.get_user_default("Company")
             }
         )
-        customer.customer_group = "All Customer Groups"
+        customer.customer_group = "Retail Customers"
         if territory:
             customer.territory = territory
         customer.save(ignore_permissions=True)
