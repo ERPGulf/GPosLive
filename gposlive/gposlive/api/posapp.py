@@ -174,6 +174,7 @@ def get_items(
     item_group: str = "",
     search_value: str = "",
     customer: str | None = None,
+    brand: str | None = None,
 ) -> list:
 
     _pos_profile = json.loads(pos_profile)
