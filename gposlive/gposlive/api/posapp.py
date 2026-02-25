@@ -174,7 +174,6 @@ def get_items(
     item_group: str = "",
     search_value: str = "",
     customer: str | None = None,
-    brand: str | None = None,
 ) -> list:
 
     _pos_profile = json.loads(pos_profile)
@@ -294,9 +293,9 @@ def get_items(
             conditions.append("item_group = %s")
             values.append(item_group)
 
-        if brand:
-            conditions.append("brand = %s")
-            values.append(brand)
+        # if brand:
+        #     conditions.append("brand = %s")
+        #     values.append(brand)
 
         if conditions:
             query += " AND " + " AND ".join(conditions)
