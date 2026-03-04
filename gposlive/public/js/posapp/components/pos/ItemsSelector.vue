@@ -368,6 +368,14 @@ export default {
         }
         this.eventBus.emit("add_item", item);
         this.qty = 1;
+
+        this.search = null;
+        this.first_search = null;
+        this.debounce_search = null;
+        this.$nextTick(() => {
+          this.$refs.debounce_search.focus();
+        });
+
       }
     },
     enter_event() {
