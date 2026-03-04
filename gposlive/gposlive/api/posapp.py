@@ -225,39 +225,8 @@ def get_items(
 
         result = []
 
-        # items_data = frappe.db.sql(
-        #     """
-        #     SELECT
-        #         name AS item_code,
-        #         item_name,
-        #         description,
-        #         stock_uom,
-        #         image,
-        #         is_stock_item,
-        #         has_variants,
-        #         variant_of,
-        #         item_group,
-        #         idx as idx,
-        #         has_batch_no,
-        #         has_serial_no,
-        #         max_discount,
-        #         brand
-        #     FROM
-        #         `tabItem`
-        #     WHERE
-        #         disabled = 0
-        #             AND is_sales_item = 1
-        #             AND is_fixed_asset = 0
-        #             {condition}
-        #     ORDER BY
-        #         item_name asc
-        #     {limit}
-        #     """.format(
-        #         condition=condition, limit=limit
-        #     ),
-        #     as_dict=1,
-        # )
-        query = """
+        items_data = frappe.db.sql(
+            """
             SELECT
                 name AS item_code,
                 item_name,
@@ -273,34 +242,65 @@ def get_items(
                 has_serial_no,
                 max_discount,
                 brand
-            FROM `tabItem`
+            FROM
+                `tabItem`
             WHERE
                 disabled = 0
-                AND is_sales_item = 1
-                AND is_fixed_asset = 0
-        """
+                    AND is_sales_item = 1
+                    AND is_fixed_asset = 0
+                    {condition}
+            ORDER BY
+                item_name asc
+            {limit}
+            """.format(
+                condition=condition, limit=limit
+            ),
+            as_dict=1,
+        )
+        # query = """
+        #     SELECT
+        #         name AS item_code,
+        #         item_name,
+        #         description,
+        #         stock_uom,
+        #         image,
+        #         is_stock_item,
+        #         has_variants,
+        #         variant_of,
+        #         item_group,
+        #         idx as idx,
+        #         has_batch_no,
+        #         has_serial_no,
+        #         max_discount,
+        #         brand
+        #     FROM `tabItem`
+        #     WHERE
+        #         disabled = 0
+        #         AND is_sales_item = 1
+        #         AND is_fixed_asset = 0
+        # """
 
-        conditions = []
-        values = []
+        # conditions = []
+        # values = []
 
-        if item_group:
-            conditions.append("item_group = %s")
-            values.append(item_group)
+        # if item_group:
+        #     conditions.append("item_group = %s")
+        #     values.append(item_group)
 
-        # if brand:
-        #     conditions.append("brand = %s")
-        #     values.append(brand)
+        # # if brand:
+        # #     conditions.append("brand = %s")
+        # #     values.append(brand)
 
-        if conditions:
-            query += " AND " + " AND ".join(conditions)
+        # if conditions:
+        #     query += " AND " + " AND ".join(conditions)
 
-        query += " ORDER BY item_name ASC"
+        # query += " ORDER BY item_name ASC"
 
-        # if page_len:
-        #     query += " LIMIT %s"
-        #     values.append(int(page_len))
+        # # if page_len:
+        # #     query += " LIMIT %s"
+        # #     values.append(int(page_len))
 
-        items_data = frappe.db.sql(query, tuple(values), as_dict=1)
+        # items_data = frappe.db.sql(query, tuple(values), as_dict=1)
 
         item_codes = [item["item_code"] for item in items_data]
 
