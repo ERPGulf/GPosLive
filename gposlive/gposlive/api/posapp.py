@@ -225,39 +225,8 @@ def get_items(
 
         result = []
 
-        items_data = frappe.db.sql(
-            """
-            SELECT
-                name AS item_code,
-                item_name,
-                description,
-                stock_uom,
-                image,
-                is_stock_item,
-                has_variants,
-                variant_of,
-                item_group,
-                idx as idx,
-                has_batch_no,
-                has_serial_no,
-                max_discount,
-                brand
-            FROM
-                `tabItem`
-            WHERE
-                disabled = 0
-                    AND is_sales_item = 1
-                    AND is_fixed_asset = 0
-                    {condition}
-            ORDER BY
-                item_name asc
-            {limit}
-            """.format(
-                condition=condition, limit=limit
-            ),
-            as_dict=1,
-        )
-        # query = """
+        # items_data = frappe.db.sql(
+        #     """
         #     SELECT
         #         name AS item_code,
         #         item_name,
@@ -273,37 +242,62 @@ def get_items(
         #         has_serial_no,
         #         max_discount,
         #         brand
-        #     FROM `tabItem`
+        #     FROM
+        #         `tabItem`
         #     WHERE
         #         disabled = 0
-        #         AND is_sales_item = 1
-        #         AND is_fixed_asset = 0
-        # """
+        #             AND is_sales_item = 1
+        #             AND is_fixed_asset = 0
+        #             {condition}
+        #     ORDER BY
+        #         item_name asc
+        #     {limit}
+        #     """.format(
+        #         condition=condition, limit=limit
+        #     ),
+        #     as_dict=1,
+        # )
+        page_len = 50
 
-        # conditions = []
-        # values = []
+        query = """
+            SELECT
+                name AS item_code,
+                item_name,
+                description,
+                stock_uom,
+                image,
+                is_stock_item,
+                has_variants,
+                variant_of,
+                item_group,
+                idx as idx,
+                has_batch_no,
+                has_serial_no,
+                max_discount,
+                brand
+            FROM `tabItem`
+            WHERE
+                disabled = 0
+                AND is_sales_item = 1
+                AND is_fixed_asset = 0
+        """
 
-        # if item_group:
-        #     conditions.append("item_group = %s")
-        #     values.append(item_group)
+        # escape % characters coming from condition
+        if condition:
+            query += " " + condition.replace("%", "%%")
 
-        # # if brand:
-        # #     conditions.append("brand = %s")
-        # #     values.append(brand)
+        values = []
 
-        # if conditions:
-        #     query += " AND " + " AND ".join(conditions)
+        if item_group:
+            query += " AND item_group LIKE %s"
+            values.append(f"%{item_group}%")
 
-        # query += " ORDER BY item_name ASC"
+        query += " ORDER BY item_name ASC LIMIT %s"
+        values.append(page_len)
 
-        # # if page_len:
-        # #     query += " LIMIT %s"
-        # #     values.append(int(page_len))
-
-        # items_data = frappe.db.sql(query, tuple(values), as_dict=1)
+        items_data = frappe.db.sql(query, values, as_dict=True)
 
         item_codes = [item["item_code"] for item in items_data]
-
         if item_codes:
             alternative_links = frappe.db.sql(
                 """
@@ -797,7 +791,7 @@ def get_shipping_rule_names():
         """,
         as_dict=1,
     )
-    frappe.log_error("shipping_rules",shipping_rules)
+    # frappe.log_error("shipping_rules",shipping_rules)
 
     return shipping_rules
 @frappe.whitelist()
@@ -948,7 +942,7 @@ def update_invoice(data: str) -> dict:
     #     invoice_doc.rounded_total = 0
 
     posa_coupons = data.get("posa_coupons", [])
-    frappe.log_error("posa_coupons",posa_coupons)
+    # frappe.log_error("posa_coupons",posa_coupons)
     if posa_coupons and posa_coupons[0].get("coupon"):
         pos_profile_doc = frappe.get_doc("POS Profile", invoice_doc.pos_profile)
         max_discount_percentage = flt(pos_profile_doc.posa_max_discount_allowed or 0.0)
@@ -1556,7 +1550,7 @@ def get_items_details(pos_profile: str, items_data: str) -> list:
 @frappe.whitelist()
 def get_item_detail(
     item: str,
-    doc: dict | None = None,
+    doc: str | dict | None = None,
     warehouse: str | None = None,
     price_list: str | None = None,
 ) -> dict:
@@ -1782,18 +1776,30 @@ def get_wholesale_rate(
     )
 
     return wh_rate[0].rate if wh_rate and wh_rate[0].rate else 0
-
 @frappe.whitelist()
-def apply_shipping_charges(invoice_doc: str) -> str:
+def apply_shipping_charges(invoice_doc) -> str:
+
+    if isinstance(invoice_doc, str):
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice_doc)
+
     shipping_rule_name = invoice_doc.shipping_rule
+
     if shipping_rule_name:
         sr = frappe.get_doc("Shipping Rule", shipping_rule_name)
         sr.apply(invoice_doc)
 
     invoice_doc.calculate_taxes_and_totals()
+
     return "done"
+# @frappe.whitelist()
+# def apply_shipping_charges(invoice_doc: str) -> str:
+#     shipping_rule_name = invoice_doc.shipping_rule
+#     if shipping_rule_name:
+#         sr = frappe.get_doc("Shipping Rule", shipping_rule_name)
+#         sr.apply(invoice_doc)
 
-
+#     invoice_doc.calculate_taxes_and_totals()
+#     return "done"
 # @frappe.whitelist()
 # def apply_shipping_charges(invoice_doc):
 #     invoice_doc.apply_shipping_charge()
