@@ -258,7 +258,6 @@ def get_items(
         #     as_dict=1,
         # )
         page_len = 50
-
         query = """
             SELECT
                 name AS item_code,
@@ -281,21 +280,16 @@ def get_items(
                 AND is_sales_item = 1
                 AND is_fixed_asset = 0
         """
-
-        # escape % characters coming from condition
         if condition:
             query += " " + condition.replace("%", "%%")
-
         values = []
-
         if item_group:
             query += " AND item_group LIKE %s"
             values.append(f"%{item_group}%")
-
         query += " ORDER BY item_name ASC LIMIT %s"
         values.append(page_len)
-
         items_data = frappe.db.sql(query, values, as_dict=True)
+
 
         item_codes = [item["item_code"] for item in items_data]
         if item_codes:
@@ -1776,8 +1770,10 @@ def get_wholesale_rate(
     )
 
     return wh_rate[0].rate if wh_rate and wh_rate[0].rate else 0
+from typing import Union
+from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
 @frappe.whitelist()
-def apply_shipping_charges(invoice_doc) -> str:
+def apply_shipping_charges(invoice_doc: Union[str, SalesInvoice]) -> str:
 
     if isinstance(invoice_doc, str):
         invoice_doc = frappe.get_doc("Sales Invoice", invoice_doc)
