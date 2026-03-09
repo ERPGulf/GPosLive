@@ -988,6 +988,11 @@ def submit_invoice(invoice: str, data: str) -> dict:
     invoice = json.loads(invoice)
     invoice_doc = frappe.get_doc("Sales Invoice", invoice.get("name"))
     invoice_doc.update(invoice)
+    
+    meta = frappe.get_meta("POS Profile")
+    # frappe.log_error("stock",meta.has_field("update_stock"))
+    if not meta.has_field("update_stock"):
+        invoice_doc.update_stock = 1
     # if invoice_doc.is_return:
     #     invoice_doc.payments = [
     #         {
