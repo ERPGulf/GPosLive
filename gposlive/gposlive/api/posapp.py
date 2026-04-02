@@ -1235,7 +1235,7 @@ def get_shipping_charge(invoice_name: str) -> dict:
     for tax in invoice.taxes:
         if tax.charge_type == "Actual":
             shipping_charge += tax.tax_amount
-    frappe.log_error("shipping_charge ",shipping_charge)
+    # frappe.log_error("shipping_charge ",shipping_charge)
     return {"shipping_charge": shipping_charge}
 
 
