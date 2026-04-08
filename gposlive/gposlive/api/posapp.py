@@ -1843,7 +1843,7 @@ def create_customer(
             }
         )
         # customer.customer_group = "Retail Customers"
-        customer.customer_group = "All Customer Groups"
+        # customer.customer_group = "All Customer Groups"
         if territory:
             customer.territory = territory
         customer.save(ignore_permissions=True)
