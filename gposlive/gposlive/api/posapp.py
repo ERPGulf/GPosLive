@@ -2887,7 +2887,7 @@ def credit_card_payment(
 
     path = "/api/method/geidea_erpgulf.geidea_erpgulf.posaw_test.send_request_to_device"
     url = f"{parsed_url.rstrip('/')}{path}"
-    frappe.log_error("url", url)
+    # frappe.log_error("url", url)
     invoice_doc = frappe.get_doc("Sales Invoice", invoice_name)
     is_return = 1 if invoice_doc.get("is_return") else 0
     original_invoice_doc = invoice_doc
