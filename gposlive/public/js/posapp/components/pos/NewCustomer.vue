@@ -112,7 +112,8 @@ export default {
     company: "",
     companies: [],
     refcodes: [],
-    birthday: new Date(),
+    // birthday: new Date(),
+    birthday: null,
     formattedBirthday: "",
     birthday_menu: false,
     group: "",
@@ -275,7 +276,10 @@ export default {
           email_id: this.email_id,
           city: this.city,
           referral_code: this.referral_code,
-          birthday: this.birthday.toISOString().slice(0, 10),
+          // birthday: this.birthday.toISOString().slice(0, 10),
+          birthday: this.birthday
+            ? this.birthday.toISOString().slice(0, 10)
+            : null,
           customer_group: this.group,
           territory: this.territory,
 
@@ -320,7 +324,8 @@ export default {
                 email_id: "",
                 referral_code: "",
                 company: "",
-                birthday: new Date(),
+                //birthday: new Date(),
+                birthday: null,
                 formattedBirthday: "",
                 group: "",
                 customerDialog: false,
