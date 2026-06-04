@@ -90,21 +90,47 @@ export default {
     },
   },
   methods: {
-
     add_from_search() {
       let phone = this.searchQuery?.trim() || "";
-
       phone = phone.replace(/\D/g, "");
 
-      if (!phone.startsWith("966")) {
-        phone = phone.replace(/^0/, "");
-        phone = "9665" + phone.slice(-8);
+      const countryList = ["966", "974", "973", "968", "965", "20"];
+
+      let detectedCountry = "966"; 
+
+      for (let code of countryList) {
+        if (phone.startsWith(code)) {
+          detectedCountry = code;
+          phone = phone.slice(code.length);
+          break;
+        }
       }
+
+      phone = phone.replace(/^0/, "");
+
       this.eventBus.emit("open_new_customer");
+
       this.$nextTick(() => {
-        this.eventBus.emit("prefill_phone", this.searchQuery);
+        this.eventBus.emit("set_country_and_mobile", {
+          country_code: detectedCountry,
+          mobile_no: phone,
+        });
       });
     },
+    // add_from_search() {
+    //   let phone = this.searchQuery?.trim() || "";
+
+    //   phone = phone.replace(/\D/g, "");
+
+    //   if (!phone.startsWith("966")) {
+    //     phone = phone.replace(/^0/, "");
+    //     phone = "9665" + phone.slice(-8);
+    //   }
+    //   this.eventBus.emit("open_new_customer");
+    //   this.$nextTick(() => {
+    //     this.eventBus.emit("prefill_phone", this.searchQuery);
+    //   });
+    // },
     get_customer_names() {
       const vm = this;
 
