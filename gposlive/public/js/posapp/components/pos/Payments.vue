@@ -785,7 +785,7 @@ export default {
       return this.shipping_charge; // optional
     },
 
-  credit_card_payment() {
+  credit_card_payment(payment) {
     const vm = this;
     vm.loading = true;
     this.eventBus.emit("freeze", {
@@ -797,7 +797,8 @@ export default {
       args: {
         invoice_name: vm.invoice_doc.name,
         customer: vm.invoice_doc.customer,
-        amount: vm.invoice_doc.rounded_total || vm.invoice_doc.grand_total,
+        // amount: vm.invoice_doc.rounded_total || vm.invoice_doc.grand_total,
+        amount: payment.amount,
       },
     callback(r) {
       vm.loading = false;
@@ -1171,6 +1172,12 @@ export default {
     },
     set_full_amount(payment) {
 
+      // if Credit Card → call API
+      if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.custom_device_enabled) {
+        this.credit_card_payment(payment);
+        return; // stop here so it doesn’t overwrite amounts
+      }
+
       // normal payments → set full amount
       this.invoice_doc.payments.forEach((p) => {
         p.amount =
@@ -1179,11 +1186,6 @@ export default {
             : 0;
       });
 
-      // if Credit Card → call API
-      if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.custom_device_enabled) {
-        this.credit_card_payment(payment);
-        return; // stop here so it doesn’t overwrite amounts
-      }
 
     },
     
