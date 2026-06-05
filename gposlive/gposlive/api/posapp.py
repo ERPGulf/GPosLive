@@ -2932,3 +2932,89 @@ def credit_card_payment(
     frappe.log_error(f"Credit Card API Response: {r.status_code}", response_json)
 
     return response_json
+
+
+@frappe.whitelist()
+def cancel_credit_card_payment(invoice_name: str) -> dict:
+    """
+    Cancels a pending credit card transaction by:
+    1. Clearing the UUID from Redis so the polling loop in send_request_to_device exits
+    2. Clearing the device_busy flag so the terminal accepts new requests
+    3. Publishing a cancel command via MQTT to the terminal
+    """
+    import json
+    import ssl
+    import paho.mqtt.client as mqtt
+    from geidea_erpgulf.geidea_erpgulf.posaw_test import (
+        clear_device_busy,
+        delete_uuid,
+        set_uuid_response,
+    )
+
+    user = frappe.session.user
+
+    try:
+        device_doc = frappe.get_doc("GEIdea Device Map", {"user": user})
+    except Exception:
+        return {"status": "error", "message": f"No device found for user {user}"}
+
+    topic = device_doc.data
+    if not topic:
+        return {"status": "error", "message": "No device topic found"}
+
+    # Get the active UUID for this device (if any)
+    active_uuid = frappe.cache().get_value(f"device_active:{topic}")
+
+    if active_uuid:
+        # Inject a cancelled response so the polling loop exits cleanly
+        set_uuid_response(active_uuid, {
+            "status": "cancelled",
+            "message": "Transaction cancelled by user",
+            "final_Status": 0,
+        })
+        # Clear device busy flag
+        clear_device_busy(topic)
+        # Clean up UUID
+        delete_uuid(active_uuid)
+
+    # Also send a cancel command to the physical terminal via MQTT
+    try:
+        geidea_setting = frappe.get_single("MQTT Setting")
+        broker_host = geidea_setting.broker_url
+        broker_port = int(geidea_setting.port or 1883)
+        protocol = (geidea_setting.protocol or "").lower()
+        mqtt_username = geidea_setting.username
+        mqtt_password = geidea_setting.get_password("password") if geidea_setting.password else None
+
+        cancel_payload = json.dumps({
+            "action": "cancel",
+            "user": user,
+            "invoice_number": invoice_name,
+            "device_topic": topic,
+        })
+
+        client = mqtt.Client()
+        if mqtt_username and mqtt_password:
+            client.username_pw_set(mqtt_username, mqtt_password)
+        if protocol == "ssl":
+            client.tls_set(
+                "/etc/ssl/certs/ca-certificates.crt",
+                tls_version=ssl.PROTOCOL_TLSv1_2
+            )
+            client.tls_insecure_set(False)
+
+        client.connect(broker_host, broker_port, 60)
+        client.loop_start()
+        client.publish(topic, cancel_payload)
+        client.loop_stop()
+        client.disconnect()
+
+    except Exception as e:
+        frappe.log_error("Cancel CC MQTT Error", str(e))
+        # Don't fail — Redis was already cleared above
+
+    return {
+        "status": "cancelled",
+        "message": "Credit card transaction cancelled",
+        "uuid": active_uuid or "none"
+    }

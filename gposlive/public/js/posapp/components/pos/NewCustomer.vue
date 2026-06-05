@@ -40,7 +40,6 @@
                     </v-select>
                   </v-col>
                   <v-col cols="8">
-                    <!-- ltr-input: only the <input> inside goes LTR, label stays RTL -->
                     <v-text-field
                       dense
                       color="indigo"
@@ -132,12 +131,17 @@ export default {
     country_code: "966",
     mobile_no: "",
     country_codes: [
-      { text: "Saudi (+966)", value: "966" },
-      { text: "Qatar (+974)", value: "974" },
+      { text: "Saudi (+966)",   value: "966" },
+      { text: "UAE (+971)",     value: "971" },
+      { text: "Kuwait (+965)",  value: "965" },
+      { text: "Qatar (+974)",   value: "974" },
       { text: "Bahrain (+973)", value: "973" },
-      { text: "Oman (+968)", value: "968" },
-      { text: "Kuwait (+965)", value: "965" },
-      { text: "Egypt (+20)", value: "20" },
+      { text: "Oman (+968)",    value: "968" },
+      { text: "Jordan (+962)",  value: "962" },
+      { text: "Yemen (+967)",   value: "967" },
+      { text: "Egypt (+20)",    value: "20"  },
+      { text: "Morocco (+212)", value: "212" },
+      { text: "Libya (+218)",   value: "218" },
     ],
     customerDialog: false,
     pos_profile: "",
@@ -167,27 +171,38 @@ export default {
 
   computed: {
     max_length() {
-      if (this.country_code === "966") return 9;
-      if (["974", "973", "968", "965"].includes(this.country_code)) return 8;
+      // 8 digits
+      if (["965", "973", "974", "968"].includes(this.country_code)) return 8;
+      // 9 digits
+      if (["966", "971", "962", "967", "212", "218"].includes(this.country_code)) return 9;
+      // 10 digits
       if (this.country_code === "20") return 10;
       return 9;
     },
+
     mobile_placeholder() {
       return "53535353";
     },
+
     validation_message() {
-      if (this.country_code === "966")
-        return this.isRTL
-          ? "يجب كتابة 9 أرقام بدون صفر الجوال"
-          : "Enter 9 digits without the leading zero";
-      if (["974", "973", "968", "965"].includes(this.country_code))
+      // 8-digit countries
+      if (["965", "973", "974", "968"].includes(this.country_code))
         return this.isRTL
           ? "يجب كتابة 8 أرقام بدون صفر الجوال"
           : "Enter 8 digits without the leading zero";
+
+      // 9-digit countries
+      if (["966", "971", "962", "967", "212", "218"].includes(this.country_code))
+        return this.isRTL
+          ? "يجب كتابة 9 أرقام بدون صفر الجوال"
+          : "Enter 9 digits without the leading zero";
+
+      // 10-digit countries
       if (this.country_code === "20")
         return this.isRTL
           ? "يجب كتابة 10 أرقام بدون صفر الجوال"
           : "Enter 10 digits without the leading zero";
+
       return "";
     },
   },
@@ -199,6 +214,11 @@ export default {
       } else {
         this.formattedBirthday = "";
       }
+    },
+
+    // Clear mobile number when country changes to avoid wrong length
+    country_code() {
+      this.mobile_no = "";
     },
   },
 
@@ -358,11 +378,6 @@ export default {
 </script>
 
 <style scoped>
-/*
-  .ltr-input targets only the actual <input> element inside v-text-field.
-  The label element is NOT affected, so it stays RTL (right-aligned)
-  while the typed text and cursor remain left-to-right for phone/email.
-*/
 .ltr-input :deep(input) {
   direction: ltr;
   text-align: left;

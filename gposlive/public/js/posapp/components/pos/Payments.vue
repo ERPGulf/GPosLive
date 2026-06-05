@@ -720,6 +720,48 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
+
+      <v-dialog v-model="credit_card_dialog" max-width="450px" persistent>
+        <v-card>
+          <v-card-title
+            style="
+              white-space: normal;
+              word-break: break-word;
+              padding: 24px 24px 16px 24px;
+              font-size: 1.25rem;
+              font-weight: 500;
+              line-height: 1.5;
+            "
+            class="text-primary"
+          >
+            {{ $t("Processing Credit Card") }}
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text class="text-center pa-6 pt-8">
+            <v-progress-circular
+              indeterminate
+              color="primary"
+              size="64"
+              class="mb-6"
+            ></v-progress-circular>
+            <div class="text-body-1 mt-4">
+              {{ $t("Please complete the transaction on the terminal...") }}
+            </div>
+          </v-card-text>
+          <v-card-actions class="pa-4 pt-0 pb-6">
+            <v-btn
+              color="error"
+              variant="elevated"
+              size="large"
+              block
+              @click="cancel_credit_card"
+            >
+              <v-icon left>mdi-close-circle</v-icon>
+              {{ $t("Cancel Transaction") }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </div>
   </div>
 </template>
@@ -730,6 +772,9 @@ import format from "../../format";
 export default {
   mixins: [format],
   data: () => ({
+    credit_card_pending: false,
+    credit_card_dialog: false,
+    active_payment_idx: null,
     transaction_number: "",
     custom_device_enabled: false,
     shipping_charge: 0,
@@ -785,56 +830,160 @@ export default {
       return this.shipping_charge; // optional
     },
 
-  credit_card_payment(payment) {
-    const vm = this;
-    vm.loading = true;
-    this.eventBus.emit("freeze", {
-      title: this.$t("Processing Credit Card..."),
-    });
+  // credit_card_payment(payment) {
+  //   const vm = this;
+  //   vm.loading = true;
+  //   this.eventBus.emit("freeze", {
+  //     title: this.$t("Processing Credit Card..."),
+  //   });
 
-    frappe.call({
-      method: "gposlive.gposlive.api.posapp.credit_card_payment",
-      args: {
-        invoice_name: vm.invoice_doc.name,
-        customer: vm.invoice_doc.customer,
-        // amount: vm.invoice_doc.rounded_total || vm.invoice_doc.grand_total,
-        amount: payment.amount,
-      },
-    callback(r) {
-      vm.loading = false;
-      vm.eventBus.emit("unfreeze");
-      const data = r.message?.message || r.message;
+  //   frappe.call({
+  //     method: "gposlive.gposlive.api.posapp.credit_card_payment",
+  //     args: {
+  //       invoice_name: vm.invoice_doc.name,
+  //       customer: vm.invoice_doc.customer,
+  //       // amount: vm.invoice_doc.rounded_total || vm.invoice_doc.grand_total,
+  //       amount: payment.amount,
+  //     },
+  //   callback(r) {
+  //     vm.loading = false;
+  //     vm.eventBus.emit("unfreeze");
+  //     const data = r.message?.message || r.message;
 
-      if (data && data.final_Status === 1) {
-        vm.credit_card_approved = true;
-        vm.credit_card_transaction_id = data.transaction_id;  // ✅ store temporarily in frontend
+  //     if (data && data.final_Status === 1) {
+  //       vm.credit_card_approved = true;
+  //       vm.credit_card_transaction_id = data.transaction_id;  // ✅ store temporarily in frontend
 
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Credit Card Payment Approved"),
-          color: "success",
-        });
-      } else {
-        vm.credit_card_approved = false;
-        vm.credit_card_transaction_id = null;
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Credit Card Denied. Please try again."),
+  //       vm.eventBus.emit("show_message", {
+  //         text: vm.$t("Credit Card Payment Approved"),
+  //         color: "success",
+  //       });
+  //     } else {
+  //       vm.credit_card_approved = false;
+  //       vm.credit_card_transaction_id = null;
+  //       vm.eventBus.emit("show_message", {
+  //         text: vm.$t("Credit Card Denied. Please try again."),
+  //         color: "error",
+  //       });
+  //     }
+  //   },
+
+  //     error() {
+  //       vm.loading = false;
+  //       vm.credit_card_approved = false;
+  //       vm.eventBus.emit("unfreeze");
+  //       vm.eventBus.emit("show_message", {
+  //         text: vm.$t("Credit Card API Request Error"),
+  //         color: "error",
+  //       });
+  //     },
+  //   });
+  // },
+
+    credit_card_payment(payment) {
+      const vm = this;
+
+      if (!payment.amount || parseFloat(payment.amount) <= 0) {
+        this.eventBus.emit("show_message", {
+          text: this.$t("Please enter a valid credit card amount first"),
           color: "error",
         });
+        return;
       }
+
+      vm.loading = true;
+      vm.credit_card_pending = true;
+      vm.credit_card_dialog = true;   // ← show our custom dialog instead of freeze
+      vm.credit_card_approved = false;
+
+      // Do NOT use eventBus freeze — we have our own dialog with Cancel button
+      frappe.call({
+        method: "gposlive.gposlive.api.posapp.credit_card_payment",
+        args: {
+          invoice_name: vm.invoice_doc.name,
+          customer: vm.invoice_doc.customer,
+          amount: payment.amount,
+        },
+        callback(r) {
+          vm.loading = false;
+          vm.credit_card_pending = false;
+          vm.credit_card_dialog = false;   // ← close dialog
+
+          const data = r.message?.message || r.message;
+
+          if (data && data.final_Status === 1) {
+            vm.credit_card_approved = true;
+            vm.credit_card_transaction_id = data.transaction_id;
+            vm.eventBus.emit("show_message", {
+              text: vm.$t("Credit Card Payment Approved"),
+              color: "success",
+            });
+          } else {
+            vm.credit_card_approved = false;
+            vm.credit_card_transaction_id = null;
+
+            // Clear CC amount so cashier can re-enter
+            vm.invoice_doc.payments.forEach((p) => {
+              if (p.mode_of_payment?.toLowerCase() === "credit card") {
+                p.amount = 0;
+              }
+            });
+
+            vm.eventBus.emit("show_message", {
+              text: vm.$t("Credit Card Denied. Please re-enter amounts and try again."),
+              color: "error",
+            });
+          }
+        },
+        error() {
+          vm.loading = false;
+          vm.credit_card_pending = false;
+          vm.credit_card_dialog = false;   // ← close dialog
+          vm.credit_card_approved = false;
+          vm.credit_card_transaction_id = null;
+
+          vm.invoice_doc.payments.forEach((p) => {
+            if (p.mode_of_payment?.toLowerCase() === "credit card") {
+              p.amount = 0;
+            }
+          });
+
+          vm.eventBus.emit("show_message", {
+            text: vm.$t("Credit Card API Request Error. Please re-enter amounts and try again."),
+            color: "error",
+          });
+        },
+      });
     },
+    cancel_credit_card() {
+      const vm = this;
 
-      error() {
-        vm.loading = false;
-        vm.credit_card_approved = false;
-        vm.eventBus.emit("unfreeze");
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Credit Card API Request Error"),
-          color: "error",
-        });
-      },
-    });
-  },
+      vm.loading = false;
+      vm.credit_card_pending = false;
+      vm.credit_card_dialog = false;
+      vm.credit_card_approved = false;
+      vm.credit_card_transaction_id = null;
 
+      vm.invoice_doc.payments.forEach((p) => {
+        if (p.mode_of_payment?.toLowerCase() === "credit card") {
+          p.amount = 0;
+        }
+      });
+
+      vm.eventBus.emit("show_message", {
+        text: vm.$t("Credit Card transaction cancelled."),
+        color: "warning",
+      });
+
+      frappe.call({
+        method: "gposlive.gposlive.api.posapp.cancel_credit_card_payment",
+        args: { invoice_name: vm.invoice_doc.name },
+        callback(r) {
+          console.log("CC cancel response:", r.message);
+        },
+        error() {},
+      });
+    },
 
     recalculate_totals() {
       let net_total = 0;
@@ -1188,19 +1337,70 @@ export default {
 
 
     },
-    
+    on_payment_input(changedPayment) {
+      // Parse — treat empty/invalid as 0
+      const enteredAmount = parseFloat(changedPayment.amount) || 0;
+      changedPayment.amount = enteredAmount;
 
-    set_rest_amount(idx) {
-      this.invoice_doc.payments.forEach((payment) => {
-        if (
-          payment.idx == idx &&
-          payment.amount == 0 &&
-          this.diff_payment > 0
-        ) {
-          payment.amount = this.diff_payment;
-        }
-      });
+      const invoiceTotal =
+        this.invoice_doc.rounded_total || this.invoice_doc.grand_total;
+
+      // Get all OTHER payments (not the one being edited)
+      const otherPayments = this.invoice_doc.payments.filter(
+        (p) => p.idx !== changedPayment.idx
+      );
+
+      if (otherPayments.length === 1) {
+        // Simple 2-way split: auto-set the other one to remainder
+        const remainder = this.flt(invoiceTotal - enteredAmount);
+        otherPayments[0].amount = remainder >= 0 ? remainder : 0;
+
+      } else if (otherPayments.length > 1) {
+        // 3+ payments: put the full remainder into the LAST other payment,
+        // leave the rest as-is
+        const sumOthers = otherPayments
+          .slice(0, -1)
+          .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const remainder = this.flt(invoiceTotal - enteredAmount - sumOthers);
+        otherPayments[otherPayments.length - 1].amount = remainder >= 0 ? remainder : 0;
+      }
+
+      this.$forceUpdate();
     },
+    set_rest_amount(idx) {
+      const invoiceTotal =
+        this.invoice_doc.rounded_total || this.invoice_doc.grand_total;
+
+      const payment = this.invoice_doc.payments.find((p) => p.idx == idx);
+      if (!payment) return;
+
+      // Calculate the sum of ALL other payments (not this one)
+      const othersTotal = this.invoice_doc.payments
+        .filter((p) => p.idx != idx)
+        .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      // Remainder = invoice total minus what others have
+      const remainder = this.flt(invoiceTotal - othersTotal);
+
+      // Always fill this field with the remainder (whether it's 0 or already has a value)
+      // Only skip if remainder is 0 or negative and field already has something
+      if (remainder > 0) {
+        payment.amount = remainder;
+        this.$forceUpdate();
+      }
+    },
+
+    // set_rest_amount(idx) {
+    //   this.invoice_doc.payments.forEach((payment) => {
+    //     if (
+    //       payment.idx == idx &&
+    //       (payment.amount == 0 || payment.amount == "")  &&
+    //       this.diff_payment > 0
+    //     ) {
+    //       payment.amount = this.diff_payment;
+    //     }
+    //   });
+    // },
     clear_all_amounts() {
       this.invoice_doc.payments.forEach((payment) => {
         payment.amount = 0;
