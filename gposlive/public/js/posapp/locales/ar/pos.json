@@ -301,9 +301,7 @@
   "nothing_to_save": "لا يوجد شيء للحفظ",
 
   "input_too_long": "الإدخال طويل جدًا!",
-
   "error_saving_invoice": "خطأ في حفظ الفاتورة الحالية",
-
   "serial_already_added": "الرقم التسلسلي {serial} تمت إضافته بالفعل!",
 
   "Selected customer not found in cached list." : "العميل المحدد غير موجود في القائمة المخزنة مؤقتًا.",
@@ -311,9 +309,18 @@
   "ALL": "الكل",
 
   "barcode_not_found": "لا يوجد عنصر يحتوي على هذا الباركود \"{code}\"",
-
   "Pincode must be exactly 5 digits!" : "يجب أن يتكون الرمز البريدي من 5 أرقام بالضبط!",
+  "Building number must be exactly 4 digits!" : "يجب أن يكون رقم المبنى 4 أرقام بالضبط!",
 
-  "Building number must be exactly 4 digits!" : "يجب أن يكون رقم المبنى 4 أرقام بالضبط!"
+  "Processing Credit Card": "جاري معالجة بطاقة الائتمان",
+  "Please complete the transaction on the terminal...": "يرجى إكمال المعاملة على الجهاز...",
+  "Cancel Transaction": "إلغاء المعاملة",
+  "Credit Card Payment Approved": "تم قبول عملية دفع بطاقة الائتمان بنجاح",
+  "Credit Card transaction cancelled.": "تم إلغاء عملية الدفع ببطاقة الائتمان",
+  "Credit Card Denied. Please re-enter amounts and try again.": "تم رفض بطاقة الائتمان. يرجى إعادة إدخال المبالغ والمحاولة مرة أخرى.",
+  "Credit Card API Request Error. Please re-enter amounts and try again.": "خطأ في طلب بطاقة الائتمان. يرجى إعادة إدخال المبالغ والمحاولة مرة أخرى.",
+  "Please enter a valid credit card amount first": "يرجى إدخال مبلغ صحيح لبطاقة الائتمان أولاً",
+  "Credit Card not approved. Cannot submit invoice.": "لم تتم الموافقة على بطاقة الائتمان. لا يمكن إرسال الفاتورة.",
+  "Credit Card in progress. Please wait...": "جاري معالجة بطاقة الائتمان. يرجى الانتظار..."
 
 }
