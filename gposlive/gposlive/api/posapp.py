@@ -989,6 +989,17 @@ def submit_invoice(invoice: str, data: str) -> dict:
     invoice_doc = frappe.get_doc("Sales Invoice", invoice.get("name"))
     invoice_doc.update(invoice)
     
+    # ✅ Backend partial payment guard
+    if not invoice_doc.is_return and not data.get("is_credit_sale"):
+        total_paid = sum(flt(p.get("amount")) for p in (invoice.get("payments") or []))
+        invoice_total = flt(invoice_doc.rounded_total or invoice_doc.grand_total)
+        if invoice_total > 0 and flt(total_paid) < invoice_total:
+            frappe.throw(
+                _("Payment amount {0} is less than invoice total {1}. Partial payment not allowed.").format(
+                    total_paid, invoice_total
+                )
+            )
+    
     meta = frappe.get_meta("POS Profile")
     # frappe.log_error("stock",meta.has_field("update_stock"))
     if not meta.has_field("update_stock"):

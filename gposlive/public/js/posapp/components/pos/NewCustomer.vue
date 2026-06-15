@@ -225,6 +225,9 @@ export default {
   methods: {
     handleMobileInput(value) {
       let digits = value.replace(/\D/g, "");
+      if (digits.startsWith("0")) {
+        digits = digits.slice(1);
+      }
       if (digits.length > this.max_length) digits = digits.slice(0, this.max_length);
       this.mobile_no = digits;
     },
@@ -292,6 +295,11 @@ export default {
     submit_dialog() {
       if (!this.customer_name) {
         this.eventBus.emit("show_mesage", { text: "Customer Name is required", color: "error" });
+        return;
+      }
+      // ✅ Reject leading zero
+      if (this.mobile_no.startsWith("0")) {
+        this.eventBus.emit("show_mesage", { text: this.validation_message, color: "error" });
         return;
       }
       if (this.mobile_no.length !== this.max_length) {
