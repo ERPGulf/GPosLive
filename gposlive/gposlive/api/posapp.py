@@ -991,6 +991,31 @@ def submit_invoice(invoice: str, data: str) -> dict:
     invoice_doc.update(invoice)
     
     
+    # meta = frappe.get_meta("POS Profile")
+    # if not meta.has_field("update_stock"):
+    #     invoice_doc.update_stock = 1
+    # customer = frappe.get_doc("Customer", invoice_doc.customer)
+    # customer_group = customer.get("customer_group") or ""
+    # price_list = frappe.get_value("POS Profile", invoice_doc.pos_profile, "selling_price_list")
+    # for item in invoice_doc.items:
+    #     item.base_rate = item.rate
+    #     item.base_price_list_rate = item.price_list_rate
+    #     item.amount = item.rate * item.qty
+    #     item.base_amount = item.amount
+    #     add_taxes_from_tax_template(item, invoice_doc)
+    # invoice_doc.calculate_taxes_and_totals()
+    
+    # # ✅ Backend partial payment guard
+    # if not invoice_doc.is_return and not data.get("is_credit_sale"):
+    #     total_paid = sum(flt(p.get("amount")) for p in (invoice.get("payments") or []))
+    #     invoice_total = flt(invoice_doc.rounded_total or invoice_doc.grand_total)
+    #     if invoice_total > 0 and flt(total_paid) < invoice_total:
+    #         frappe.throw(
+    #             _("Payment amount {0} is less than invoice total {1}. Partial payment not allowed.").format(
+    #                 total_paid, invoice_total
+    #             )
+    #         )
+    
     meta = frappe.get_meta("POS Profile")
     if not meta.has_field("update_stock"):
         invoice_doc.update_stock = 1
@@ -1006,34 +1031,6 @@ def submit_invoice(invoice: str, data: str) -> dict:
         item.base_amount = item.amount
 
         add_taxes_from_tax_template(item, invoice_doc)
-    invoice_doc.calculate_taxes_and_totals()
-    
-    # ✅ Backend partial payment guard
-    if not invoice_doc.is_return and not data.get("is_credit_sale"):
-        total_paid = sum(flt(p.get("amount")) for p in (invoice.get("payments") or []))
-        invoice_total = flt(invoice_doc.rounded_total or invoice_doc.grand_total)
-        if invoice_total > 0 and flt(total_paid) < invoice_total:
-            frappe.throw(
-                _("Payment amount {0} is less than invoice total {1}. Partial payment not allowed.").format(
-                    total_paid, invoice_total
-                )
-            )
-    
-    # meta = frappe.get_meta("POS Profile")
-    # if not meta.has_field("update_stock"):
-    #     invoice_doc.update_stock = 1
-    
-    # customer = frappe.get_doc("Customer", invoice_doc.customer)
-    # customer_group = customer.get("customer_group") or ""
-    # price_list = frappe.get_value("POS Profile", invoice_doc.pos_profile, "selling_price_list")
-    
-    # for item in invoice_doc.items:
-    #     item.base_rate = item.rate
-    #     item.base_price_list_rate = item.price_list_rate
-    #     item.amount = item.rate * item.qty
-    #     item.base_amount = item.amount
-
-    #     add_taxes_from_tax_template(item, invoice_doc)
 
     if invoice.get("posa_delivery_date"):
         invoice_doc.update_stock = 0

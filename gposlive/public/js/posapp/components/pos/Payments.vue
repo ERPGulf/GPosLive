@@ -1075,17 +1075,26 @@ export default {
           });
           return;
         }
+      
+      if (!this.is_credit_sale) {
         if (
+          this.is_cashback &&
+          !this.is_original_invoice_unpaid &&
           this.total_payments !==
             (this.invoice_doc.rounded_total || this.invoice_doc.grand_total)
         ) {
+        // if (
+        //   this.total_payments !==
+        //     (this.invoice_doc.rounded_total || this.invoice_doc.grand_total)
+        // ) {
           this.eventBus.emit("show_message", {
-            text: `The amount paid is not correct`,
+            text: `The amount paid is not correct11`,
             color: "error",
           });
           frappe.utils.play_sound("error");
           return;
         }
+      }
       if (this.is_credit_sale) {
         if (this.total_payments !== 0) {
           this.eventBus.emit("show_message", {
