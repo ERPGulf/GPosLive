@@ -990,33 +990,10 @@ def submit_invoice(invoice: str, data: str) -> dict:
     invoice_doc = frappe.get_doc("Sales Invoice", invoice.get("name"))
     invoice_doc.update(invoice)
     
-    # ✅ Backend partial payment guard
-    if not invoice_doc.is_return and not data.get("is_credit_sale"):
-        total_paid = sum(flt(p.get("amount")) for p in (invoice.get("payments") or []))
-        invoice_total = flt(invoice_doc.rounded_total or invoice_doc.grand_total)
-        if invoice_total > 0 and flt(total_paid) < invoice_total:
-            frappe.throw(
-                _("Payment amount {0} is less than invoice total {1}. Partial payment not allowed.").format(
-                    total_paid, invoice_total
-                )
-            )
     
     meta = frappe.get_meta("POS Profile")
-    # frappe.log_error("stock",meta.has_field("update_stock"))
     if not meta.has_field("update_stock"):
         invoice_doc.update_stock = 1
-    # if invoice_doc.is_return:
-    #     invoice_doc.payments = [
-    #         {
-    #             "mode_of_payment": "Cash",
-    #             "amount": invoice_doc.rounded_total or invoice_doc.grand_total,
-    #             "type": "Cash",
-    #         }
-    #     ]
-    # if invoice_doc.is_return:
-    #     invoice_doc.append("payments", {
-    #     "amount": invoice_doc.rounded_total or invoice_doc.grand_total
-    # })
     
     customer = frappe.get_doc("Customer", invoice_doc.customer)
     customer_group = customer.get("customer_group") or ""
@@ -1029,29 +1006,33 @@ def submit_invoice(invoice: str, data: str) -> dict:
         item.base_amount = item.amount
 
         add_taxes_from_tax_template(item, invoice_doc)
-
+    invoice_doc.calculate_taxes_and_totals()
+    
+    # ✅ Backend partial payment guard
+    if not invoice_doc.is_return and not data.get("is_credit_sale"):
+        total_paid = sum(flt(p.get("amount")) for p in (invoice.get("payments") or []))
+        invoice_total = flt(invoice_doc.rounded_total or invoice_doc.grand_total)
+        if invoice_total > 0 and flt(total_paid) < invoice_total:
+            frappe.throw(
+                _("Payment amount {0} is less than invoice total {1}. Partial payment not allowed.").format(
+                    total_paid, invoice_total
+                )
+            )
+    
+    # meta = frappe.get_meta("POS Profile")
+    # if not meta.has_field("update_stock"):
+    #     invoice_doc.update_stock = 1
+    
+    # customer = frappe.get_doc("Customer", invoice_doc.customer)
+    # customer_group = customer.get("customer_group") or ""
+    # price_list = frappe.get_value("POS Profile", invoice_doc.pos_profile, "selling_price_list")
     
     # for item in invoice_doc.items:
-    #     rate = get_price_list_rate_for(
-    #         {
-    #             "price_list": price_list,
-    #             "customer": invoice_doc.customer,
-    #             "transaction_date": invoice_doc.posting_date,
-    #             "uom": item.uom,
-    #             "qty": item.qty,
-    #             "conversion_factor": item.conversion_factor,
-    #             "stock_uom": item.stock_uom,
-    #             "price_list_uom_dependant": 0,
-    #         },
-    #         item.item_code,
-    #     ) or 0
+    #     item.base_rate = item.rate
+    #     item.base_price_list_rate = item.price_list_rate
+    #     item.amount = item.rate * item.qty
+    #     item.base_amount = item.amount
 
-    #     item.rate = rate
-    #     item.price_list_rate = rate
-    #     item.base_rate = rate
-    #     item.base_price_list_rate = rate
-    #     item.amount = rate * item.qty
-    #     item.base_amount = rate * item.qty
     #     add_taxes_from_tax_template(item, invoice_doc)
 
     if invoice.get("posa_delivery_date"):
@@ -1069,31 +1050,6 @@ def submit_invoice(invoice: str, data: str) -> dict:
                 "Company", invoice_doc.company, "default_cash_account"
             )
         }
-        
-    # if invoice_doc.is_return:
-    #     payment_entry = frappe.get_doc(
-    #         {
-    #             "doctype": "Sales Invoice Payment",
-    #             "amount": invoice_doc.rounded_total or invoice_doc.grand_total,
-    #             "mode_of_payment": "Cash",
-    #             "type": "Cash",
-    #         }
-    #     )
-
-    #     payment_entry.flags.ignore_permissions = True
-    #     frappe.flags.ignore_account_permission = True
-    #     payment_entry.save()
-    #     payment_entry.submit()
-
-    # if invoice_doc.is_return:
-        
-    #     invoice_doc.payments = []  # Clear any existing payments, if needed
-    #     invoice_doc.append("payments", {
-    #         "mode_of_payment": "Cash",
-    #         "type": "Cash",
-    #         "amount": invoice_doc.rounded_total or invoice_doc.grand_total
-    #     })
-    #     # frappe.log_error("amount",invoice_doc.payments[0].amount)
 
     if data.get("credit_change"):
         advance_payment_entry = frappe.get_doc(
@@ -1141,7 +1097,6 @@ def submit_invoice(invoice: str, data: str) -> dict:
     
     if invoice_doc.is_return and not data.get("is_cashback"):
         invoice_doc.is_pos = 0
-
 
     # if frappe.get_value("POS Profile", invoice_doc.pos_profile, "posa_auto_set_batch"):
     #     set_batch_nos(invoice_doc, "warehouse", throw=True)
@@ -1197,29 +1152,6 @@ def submit_invoice(invoice: str, data: str) -> dict:
                 },
             )
     else:
-        # if invoice_doc.is_return and not data.get("is_cashback"):
-        #     # Zero out all item amounts/rates
-        #     for item in invoice_doc.items:
-        #         item.rate = 0
-        #         item.amount = 0
-        #         item.base_rate = 0
-        #         item.base_amount = 0
-        #         item.price_list_rate = 0
-        #         item.base_price_list_rate = 0
-        #     # Zero out all taxes
-        #     if hasattr(invoice_doc, "taxes"):
-        #         for tax in invoice_doc.taxes:
-        #             tax.tax_amount = 0
-        #             tax.base_tax_amount = 0
-        #             tax.tax_amount_after_discount_amount = 0
-        #             tax.base_tax_amount_after_discount_amount = 0
-        #     # Zero out totals
-        #     invoice_doc.net_total = 0
-        #     invoice_doc.total = 0
-        #     invoice_doc.total_taxes_and_charges = 0
-        #     invoice_doc.grand_total = 0
-        #     invoice_doc.rounded_total = 0
-            
         if invoice_doc.is_return:
             invoice_doc.update_outstanding_for_self = 0
         user = frappe.session.user 
@@ -1247,7 +1179,6 @@ def get_shipping_charge(invoice_name: str) -> dict:
     for tax in invoice.taxes:
         if tax.charge_type == "Actual":
             shipping_charge += tax.tax_amount
-    # frappe.log_error("shipping_charge ",shipping_charge)
     return {"shipping_charge": shipping_charge}
 
 
