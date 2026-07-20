@@ -233,7 +233,8 @@
                     hide-details
                     :prefix="currencySymbol(pos_profile.currency)"
                     :model-value="formatCurrency(set_price_rate(item))"
-                    disabled
+                    @update:model-value="update_item_rate(item, $event)"
+                    :disabled="!pos_profile.posa_allow_user_to_edit_rate"
                   ></v-text-field>
                 </v-col>
 
@@ -316,10 +317,23 @@
                     bg-color="white"
                     hide-details
                     :prefix="currencySymbol(pos_profile.currency)"
-                    :model-value="formatCurrency(set_price_rate(item))"
+                    :model-value="formatCurrency(item.price_list_rate)"
                     disabled
                   ></v-text-field>
                 </v-col>
+                <!-- <v-col cols="4">
+                  <v-text-field
+                    density="compact"
+                    variant="outlined"
+                    color="primary"
+                    :label="$t('Price list Rate')"
+                    bg-color="white"
+                    hide-details
+                    :prefix="currencySymbol(pos_profile.currency)"
+                    :model-value="formatCurrency(set_price_rate(item))"
+                    disabled
+                  ></v-text-field>
+                </v-col> -->
                 <v-col cols="4">
                   <v-text-field
                     density="compact"
@@ -916,26 +930,46 @@ export default {
         console.error("Failed to load returned item note options", e);
       }
     },
-    update_item_rate(item) {
-      const customerGroup = this.customer_info?.customer_group || "";
-
-      //const localItems = JSON.parse(
-      //  localStorage.getItem("items_storage") || "[]"
-      //);
-      const localItem = localItems.find((i) => i.item_code === item.item_code);
-      if (localItem) {
-       
-        item.price_list_rate = +localItem.price_list_rate || 0;
+    update_item_rate(item, value) {
+      const newRate = flt(value);
+      if (isNaN(newRate) || newRate < 0) {
+        return;
       }
 
-    
-      item.rate = item.price_list_rate || item.rate;
-      
-      item.amount = item.rate * item.qty;
+      item.rate = newRate;
+      item.amount = flt(item.rate) * flt(item.qty);
       item.base_rate = item.rate;
-      item.base_price_list_rate = item.rate;
       item.base_amount = item.amount;
+
+      // Keep discount fields consistent with a manually typed rate,
+      // measured against the (unchanged) price list rate.
+      if (item.price_list_rate) {
+        item.discount_amount = this.flt(
+          flt(item.price_list_rate) - flt(item.rate),
+          this.currency_precision
+        );
+        item.discount_percentage = this.flt(
+          (flt(item.discount_amount) / flt(item.price_list_rate)) * 100,
+          this.currency_precision
+        );
+      }
     },
+    // update_item_rate(item) {
+    //   const customerGroup = this.customer_info?.customer_group || "";
+    //   const localItem = localItems.find((i) => i.item_code === item.item_code);
+    //   if (localItem) {
+       
+    //     item.price_list_rate = +localItem.price_list_rate || 0;
+    //   }
+
+    
+    //   item.rate = item.price_list_rate || item.rate;
+      
+    //   item.amount = item.rate * item.qty;
+    //   item.base_rate = item.rate;
+    //   item.base_price_list_rate = item.rate;
+    //   item.base_amount = item.amount;
+    // },
     load_all_customers() {
       const vm = this;
 
