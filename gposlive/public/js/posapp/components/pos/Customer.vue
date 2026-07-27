@@ -20,8 +20,7 @@
     :disabled="readonly"
     append-icon="mdi-plus"
     @click:append="new_customer"
-    prepend-inner-icon="mdi-account-edit"
-    @click:prepend-inner="edit_customer"
+
   >
 
     <template v-slot:no-data>
