@@ -212,7 +212,6 @@ export default {
 			while (true) {
 				let result;
 
-				frappe.freeze(__("Follow the prompts on the card machine..."));
 				try {
 					result = await alhamrani_payment.purchase({
 						amount: amount,
@@ -221,11 +220,6 @@ export default {
 					});
 				} catch (err) {
 					if (err.indeterminate) {
-						// No confirmation dialog: treat as not charged, block this
-						// sale. The Alhamrani Transaction is still recorded server-side
-						// as Unconfirmed for later manual reconciliation -- it's just
-						// no longer surfaced to the cashier at the point of sale.
-						frappe.unfreeze();
 						frappe.msgprint({
 							title: __("Card payment unresolved"),
 							message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [err.txn]),
@@ -234,15 +228,12 @@ export default {
 						return { ok: false, reason: "not_charged" };
 					}
 
-					frappe.unfreeze();
 					frappe.msgprint({
 						title: __("Card payment failed"),
 						message: err.message,
 						indicator: "red",
 					});
 					return { ok: false, reason: "error" };
-				} finally {
-					frappe.unfreeze();
 				}
 
 				if (result.approved) {
@@ -258,7 +249,6 @@ export default {
 					return { ok: false, reason: "not_charged" };
 				}
 
-				// A clean decline: the card was NOT charged, so retrying is safe.
 				const retry = await this.confirm_async(
 					__("Card declined: {0}. Try again?", [result.meaning])
 				);
