@@ -769,9 +769,13 @@
 <script>
 import { th } from "vuetify/locale";
 import format from "../../format";
+import CardTerminal from "../mixins/card_terminal";
 export default {
-  mixins: [format],
+  mixins: [format, CardTerminal],
   data: () => ({
+    alhamrani_card_pending: false,
+    alhamrani_card_approved: false,
+    alhamrani_transaction_id: null,
     credit_card_pending: false,
     credit_card_dialog: false,
     active_payment_idx: null,
@@ -985,6 +989,58 @@ export default {
       });
     },
 
+    async alhamrani_card_payment(payment) {
+      const vm = this;
+
+      if (!payment.amount || parseFloat(payment.amount) <= 0) {
+        vm.eventBus.emit("show_message", {
+          text: vm.$t("Please enter a valid credit card amount first"),
+          color: "error",
+        });
+        return;
+      }
+
+      vm.loading = true;
+      vm.alhamrani_card_pending = true;
+      vm.alhamrani_card_approved = false;
+
+      try {
+        const res = await vm.take_card_payment_alhamrani(payment.amount);
+
+        if (res.ok) {
+          vm.alhamrani_card_approved = true;
+          vm.alhamrani_transaction_id = res.transaction_id;
+          vm.eventBus.emit("show_message", {
+            text: vm.$t("Credit Card Payment Approved"),
+            color: "success",
+          });
+        } else {
+          vm.alhamrani_card_approved = false;
+          vm.alhamrani_transaction_id = null;
+
+          // Clear the CC amount so the cashier re-enters it, same as Geidea.
+          // Not touched for reason "not_charged" after an Unconfirmed dialog
+          // resolution -- the cashier already confirmed nothing was taken.
+          vm.invoice_doc.payments.forEach((p) => {
+            if (p.mode_of_payment?.toLowerCase() === "credit card") {
+              p.amount = 0;
+            }
+          });
+
+          if (res.reason !== "declined") {
+            vm.eventBus.emit("show_message", {
+              text: vm.$t("Credit Card Denied. Please re-enter amounts and try again."),
+              color: "error",
+            });
+          }
+        }
+      } finally {
+        vm.loading = false;
+        vm.alhamrani_card_pending = false;
+      }
+    },
+
+
     recalculate_totals() {
       let net_total = 0;
       let total = 0;
@@ -1061,6 +1117,15 @@ export default {
       );
 
       if (hasCreditCard && !this.credit_card_approved && this.custom_device_enabled) {
+        this.eventBus.emit("show_message", {
+          text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
+          color: "error",
+        });
+        frappe.utils.play_sound("error");
+        return;
+      }
+
+      if (hasCreditCard && this.card_provider === "alhamrani" && !this.alhamrani_card_approved) {
         this.eventBus.emit("show_message", {
           text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
           color: "error",
@@ -1334,6 +1399,10 @@ export default {
       if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.custom_device_enabled) {
         this.credit_card_payment(payment);
         return; // stop here so it doesn’t overwrite amounts
+      }
+      if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.card_provider === "alhamrani") {
+        this.alhamrani_card_payment(payment);
+        return;
       }
 
       // normal payments → set full amount
@@ -1856,6 +1925,7 @@ export default {
 
   mounted: function () {
     this.fetchDeviceStatus();
+    this.setup_card_terminal();
     this.$nextTick(function () {
       this.eventBus.on("send_invoice_doc_payment", (invoice_doc) => {
         this.invoice_doc = invoice_doc;
