@@ -268,6 +268,7 @@ fixtures = [
                     "Sales Invoice Payment-custom_transaction_id",
                     "POS Payment Method- custom_make_transaction_number_mandatory",
                     "Sales Invoice Item-custom_additional_notes",
+                    "POS Profile-posa_lock_return_payment_method",
                 ),
             ]
         ],

@@ -28,6 +28,29 @@
                   required
                 ></v-autocomplete>
               </v-col>
+              <v-col cols="12" v-if="alhamraniTerminals.length">
+                <v-select
+                  density="compact"
+                  variant="outlined"
+                  color="primary"
+                  :label="$t('Payment Terminal')"
+                  v-model="selectedTerminal"
+                  :items="alhamraniTerminals"
+                  item-title="terminal_id"
+                  item-value="terminal_id"
+                  hide-details
+                >
+                  <template v-slot:item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <v-list-item-title>{{ item.raw.terminal_id }}</v-list-item-title>
+                      <v-list-item-subtitle>
+                        {{ item.raw.connection }} — {{ item.raw.terminal_address }}
+                        <span v-if="item.raw.is_default"> ({{ $t('Default') }})</span>
+                      </v-list-item-subtitle>
+                    </v-list-item>
+                  </template>
+                </v-select>
+              </v-col>
 
               <v-col cols="12">
                 <v-data-table
@@ -83,6 +106,8 @@ export default {
   props: ["dialog"],
   data() {
     return {
+      alhamraniTerminals: [],
+      selectedTerminal: null,
       isOpen: this.dialog ? this.dialog : false,
       dialog_data: {},
       is_loading: false,
@@ -116,7 +141,37 @@ export default {
       snackText: "", // TODO : need to remove
     };
   },
-  watch: {
+  // watch: {
+  //   selectedPosProfile(newVal) {
+  //     if (newVal) this.fetchAlhamraniTerminals(newVal.name || newVal);
+  //   },
+  //   company(val) {
+  //     this.pos_profiles = [];
+  //     this.pos_profiles_data.forEach((element) => {
+  //       if (element.company === val) {
+  //         this.pos_profiles.push(element.name);
+  //       }
+  //       if (this.pos_profiles.length) {
+  //         this.pos_profile = this.pos_profiles[0];
+  //       } else {
+  //         this.pos_profile = "";
+  //       }
+  //     });
+  //   },
+  //   pos_profile(val) {
+  //     this.payments_methods = [];
+  //     this.payments_method_data.forEach((element) => {
+  //       if (element.parent === val) {
+  //         this.payments_methods.push({
+  //           mode_of_payment: element.mode_of_payment,
+  //           amount: 0,
+  //           currency: element.currency,
+  //         });
+  //       }
+  //     });
+  //   },
+  // },
+    watch: {
     company(val) {
       this.pos_profiles = [];
       this.pos_profiles_data.forEach((element) => {
@@ -141,9 +196,36 @@ export default {
           });
         }
       });
+      if (val) {
+        this.fetchAlhamraniTerminals(val);
+      } else {
+        this.alhamraniTerminals = [];
+        this.selectedTerminal = null;
+      }
     },
   },
   methods: {
+    async fetchAlhamraniTerminals(posProfileName) {
+      const res = await frappe.call({
+        method: "geidea_erpgulf.alhamrani.get_allowed_terminals",
+        args: { pos_profile: posProfileName },
+      });
+      this.alhamraniTerminals = res.message || [];
+      const defaultTerm = this.alhamraniTerminals.find((t) => t.is_default);
+      this.selectedTerminal = defaultTerm ? defaultTerm.terminal_id : (this.alhamraniTerminals[0]?.terminal_id || null);
+    },
+
+    async assignTerminalToShift(posOpeningShiftName) {
+      if (!this.selectedTerminal) return;
+      await frappe.call({
+        method: "geidea_erpgulf.alhamrani.select_terminal",
+        args: {
+          pos_opening_shift: posOpeningShiftName,
+          terminal: this.selectedTerminal,
+        },
+      });
+    },
+
     close_opening_dialog() {
       this.eventBus.emit("close_opening_dialog");
     },
@@ -176,8 +258,9 @@ export default {
           company: this.company,
           balance_details: this.payments_methods,
         })
-        .then((r) => {
+        .then(async (r) => {
           if (r.message) {
+            await this.assignTerminalToShift(r.message.pos_opening_shift.name);
             vm.eventBus.emit("register_pos_data", r.message);
             vm.eventBus.emit("set_company", r.message.company);
             vm.close_opening_dialog();

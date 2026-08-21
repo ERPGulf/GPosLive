@@ -93,7 +93,7 @@
                 :rules="[isNumber]"
                 :prefix="currencySymbol(invoice_doc.currency)"
                 @focus="set_rest_amount(payment.idx)"
-                :readonly="invoice_doc.is_return ? false : false"
+                :readonly="is_locked_return"
               />
             </v-col>
 
@@ -773,6 +773,7 @@ import CardTerminal from "../mixins/card_terminal";
 export default {
   mixins: [format, CardTerminal],
   data: () => ({
+    pos_opening_shift: null,
     alhamrani_card_pending: false,
     alhamrani_card_approved: false,
     alhamrani_transaction_id: null,
@@ -812,11 +813,19 @@ export default {
   }),
 
   methods: {
+    // async fetchDeviceStatus() {
+    //   const res = await frappe.call({
+    //     method: "gposlive.gposlive.api.posapp.is_device_enabled",
+    //   });
+
+    //   this.custom_device_enabled = res.message === 1;
+    // },
+
     async fetchDeviceStatus() {
       const res = await frappe.call({
-        method: "gposlive.gposlive.api.posapp.is_device_enabled",
+        method: "geidea_erpgulf.alhamrani.is_device_enabled",
+        args: { pos_opening_shift: this.pos_opening_shift?.name },
       });
-
       this.custom_device_enabled = res.message === 1;
     },
 
@@ -991,10 +1000,13 @@ export default {
 
     async alhamrani_card_payment(payment) {
       const vm = this;
+      const amt = parseFloat(payment.amount);
+      const validAmount =
+        !isNaN(amt) && amt !== 0 && (this.invoice_doc.is_return ? amt < 0 : amt > 0);
 
-      if (!payment.amount || parseFloat(payment.amount) <= 0) {
-        vm.eventBus.emit("show_message", {
-          text: vm.$t("Please enter a valid credit card amount first"),
+      if (!validAmount) {
+        this.eventBus.emit("show_message", {
+          text: this.$t("Please enter a valid credit card amount first"),
           color: "error",
         });
         return;
@@ -1116,7 +1128,7 @@ export default {
           p.amount > 0 // ensure it's actually being used
       );
 
-      if (hasCreditCard && !this.credit_card_approved && this.custom_device_enabled) {
+      if (hasCreditCard && this.card_provider === "geidea" && !this.credit_card_approved) {
         this.eventBus.emit("show_message", {
           text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
           color: "error",
@@ -1395,14 +1407,22 @@ export default {
     },
     set_full_amount(payment) {
 
-      // if Credit Card → call API
-      if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.custom_device_enabled) {
-        this.credit_card_payment(payment);
-        return; // stop here so it doesn’t overwrite amounts
-      }
-      if (payment.mode_of_payment?.toLowerCase() === "credit card" && this.card_provider === "alhamrani") {
-        this.alhamrani_card_payment(payment);
-        return;
+      // Route by card_provider ONLY -- custom_device_enabled is legacy and, since
+      // fetchDeviceStatus() now queries Alhamrani, no longer means "Geidea is
+      // enabled". Checking it here would misroute Alhamrani tills into the old
+      // Geidea-only flow (which fails and zeroes the amount, since there's no
+      // GEIdea Device Map for this user).
+      if (payment.mode_of_payment?.toLowerCase() === "credit card") {
+        if (this.card_provider === "geidea") {
+          this.credit_card_payment(payment);
+          return;
+        }
+        if (this.card_provider === "alhamrani") {
+          this.alhamrani_card_payment(payment);
+          return;
+        }
+        // No provider configured for this shift -- fall through to the normal
+        // full-amount behaviour below so the field is at least usable manually.
       }
 
       // normal payments → set full amount
@@ -1412,7 +1432,6 @@ export default {
             ? this.invoice_doc.rounded_total
             : 0;
       });
-
 
     },
     on_payment_input(changedPayment) {
@@ -1865,6 +1884,15 @@ export default {
 
       return label;
     },
+    is_locked_return() {
+      const configuredLock = !!(
+        this.invoice_doc.is_return &&
+        this.pos_profile.posa_lock_return_payment_method &&
+        this.invoice_doc.return_against
+      );
+      if (!configuredLock) return false;
+      return this.invoice_doc.payments && this.invoice_doc.payments.some((p) => this.flt(p.amount) !== 0);
+    },
     available_pioints_amount() {
       let amount = 0;
       if (this.customer_info.loyalty_points) {
@@ -1924,8 +1952,8 @@ export default {
   },
 
   mounted: function () {
-    this.fetchDeviceStatus();
-    this.setup_card_terminal();
+    // this.fetchDeviceStatus();
+    // this.setup_card_terminal();
     this.$nextTick(function () {
       this.eventBus.on("send_invoice_doc_payment", (invoice_doc) => {
         this.invoice_doc = invoice_doc;
@@ -1935,10 +1963,32 @@ export default {
         this.is_credit_sale = 0;
         this.is_write_off_change = 0;
 
-        this.invoice_doc.payments.forEach((p) => {
-          p.amount = 0;
-          p.base_amount = 0;
-        });
+        const locked = !!(
+          invoice_doc.is_return &&
+          this.pos_profile.posa_lock_return_payment_method &&
+          invoice_doc.return_against
+        );
+
+        // Trust the server's split ONLY if it actually populated real
+        // (nonzero) amounts. If "locked" says yes but every amount that
+        // arrived is 0 (e.g. return_against wasn't set yet when the split
+        // ran server-side, or the original invoice's payment lookup came
+        // back empty), fall through to the manual-fill path below instead
+        // of leaving a silently broken zeroed screen.
+        const serverAlreadyFilled =
+          locked &&
+          this.invoice_doc.payments.some((p) => this.flt(p.amount) !== 0);
+
+        if (!serverAlreadyFilled) {
+          // Only zero amounts when nothing has been correctly
+          // server-allocated -- a locked return's payments (single method
+          // or proportional split) must survive untouched from
+          // _add_payments_to_return_invoice().
+          this.invoice_doc.payments.forEach((p) => {
+            p.amount = 0;
+            p.base_amount = 0;
+          });
+        }
 
         if (invoice_doc.is_return) {
           this.is_return = true;
@@ -1948,23 +1998,28 @@ export default {
             this.currency_precision
           );
 
-          // const cashPayment = this.invoice_doc.payments.find(
-          //   (p) =>
-          //     p.type === "Cash" &&
-          //     p.mode_of_payment.toLowerCase().includes("cash")
-          // );
-
-
-          const translatedCash = this.$t("Cash").toLowerCase();
-          const cashPayment = this.invoice_doc.payments.find(
-            (p) =>
-              p.type.toLowerCase() === translatedCash ||
-              p.mode_of_payment.toLowerCase().includes(translatedCash)
-          );
-
-          if (cashPayment) {
-            cashPayment.amount = returnAmount;
+          if (!serverAlreadyFilled) {
+            const translatedCash = this.$t("Cash").toLowerCase();
+            const cashPayment = this.invoice_doc.payments.find(
+              (p) =>
+                (p.type || "").toLowerCase() === translatedCash ||
+                (p.mode_of_payment || "").toLowerCase().includes(translatedCash)
+            );
+            if (cashPayment) {
+              cashPayment.amount = returnAmount;
+            } else {
+              // No recognizable "Cash" row -- don't leave the return silently
+              // unpayable. Fall back to the first row so the cashier at least
+              // sees a nonzero, editable amount instead of all zeros.
+              console.warn("No Cash payment row found for return; falling back to first payment method");
+              if (this.invoice_doc.payments.length) {
+                this.invoice_doc.payments[0].amount = returnAmount;
+              }
+            }
           }
+          // serverAlreadyFilled: amounts already correct from
+          // _add_payments_to_return_invoice() (single method or
+          // proportional split). Leave them exactly as they arrived.
         } else {
           const totalAmount = this.flt(
             invoice_doc.rounded_total || invoice_doc.grand_total,
@@ -1993,9 +2048,16 @@ export default {
         });
       });
 
+      // this.eventBus.on("register_pos_profile", (data) => {
+      //   this.pos_profile = data.pos_profile;
+      //   this.get_mpesa_modes();
+      // });
       this.eventBus.on("register_pos_profile", (data) => {
         this.pos_profile = data.pos_profile;
+        this.pos_opening_shift = data.pos_opening_shift || null;
         this.get_mpesa_modes();
+        this.fetchDeviceStatus();
+        this.setup_card_terminal();
       });
       this.eventBus.on("add_the_new_address", (data) => {
         this.addresses.push(data);

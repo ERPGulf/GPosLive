@@ -799,6 +799,7 @@ def get_additional_notes_options():
 
 @frappe.whitelist()
 def update_invoice(data: str) -> dict:
+    frappe.log_error("Adding payments to return invoice", "Adding payments to return invoice")
     data = json.loads(data)
     
      
@@ -899,8 +900,14 @@ def update_invoice(data: str) -> dict:
     invoice_doc.discount_amount = data.get("discount_amount")
     invoice_doc.rounded_total = frappe.utils.rounded(invoice_doc.grand_total)
     
+    # if invoice_doc.is_return:
+    #     _add_payments_to_return_invoice(invoice_doc)  # This will modify invoice_doc locally
+    
     if invoice_doc.is_return:
-        _add_payments_to_return_invoice(invoice_doc)  # This will modify invoice_doc locally
+        invoice_doc.flags.ignore_permissions = True
+        invoice_doc.save()
+        invoice_doc.reload()
+        _add_payments_to_return_invoice(invoice_doc)
 
     # if invoice_doc.customer:
     #     customer_addresses = frappe.db.sql("""
@@ -2763,17 +2770,134 @@ def get_sales_invoice_child_table(
     return child_doc
 
 
+# def _add_payments_to_return_invoice(invoice_doc):
+#     invoice_doc.payments = [] # reset payments
+#     pos_profile = frappe.get_doc("POS Profile", invoice_doc.pos_profile)
+
+#     for payment_method in pos_profile.payments:
+#         if  payment_method.allow_in_returns:
+#             invoice_doc.append("payments", {
+#                 "mode_of_payment": payment_method.mode_of_payment,
+#                 "allow_in_returns": payment_method.allow_in_returns,
+#         })
+
+
+# def _add_payments_to_return_invoice(invoice_doc):
+#     pos_profile = frappe.get_doc("POS Profile", invoice_doc.pos_profile)
+#     lock_enabled = cint(pos_profile.get("posa_lock_return_payment_method"))
+#     invoice_doc.payments = []
+
+#     original_name = invoice_doc.get("return_against")
+#     original_methods = []
+#     if lock_enabled and original_name:
+#         original_methods = frappe.get_all(
+#             "Sales Invoice Payment",
+#             filters={"parent": original_name},
+#             fields=["mode_of_payment", "amount"],   # <-- also fetch type
+#             order_by="idx",
+#         )
+#         original_methods = [p for p in original_methods if flt(p.amount) != 0]
+#         for m in original_methods:
+#             m["type"] = frappe.get_cached_value("Mode of Payment", m.mode_of_payment, "type")
+
+#     frappe.log_error(
+#         title="POS Return Payment Split Debug",
+#         message=f"invoice={invoice_doc.name or 'new'} lock_enabled={lock_enabled} "
+#                 f"return_against={original_name} original_methods={original_methods}",
+#     )
+
+#     return_total = abs(flt(invoice_doc.rounded_total or invoice_doc.grand_total))
+#     precision = invoice_doc.precision("grand_total") or 2
+
+#     if lock_enabled and len(original_methods) == 1:
+#         invoice_doc.append("payments", {
+#             "mode_of_payment": original_methods[0].mode_of_payment,
+#             "amount": -return_total,
+#             "type": original_methods[0].type,
+#             "allow_in_returns": 1,
+#         })
+#         return
+
+#     if lock_enabled and len(original_methods) > 1:
+#         original_total = sum(flt(p.amount) for p in original_methods)
+#         if original_total > 0:
+#             running_total = 0.0
+#             for i, method in enumerate(original_methods):
+#                 ratio = flt(method.amount) / original_total
+#                 if i < len(original_methods) - 1:
+#                     share = flt(return_total * ratio, precision)
+#                     running_total += share
+#                 else:
+#                     share = flt(return_total - running_total, precision)
+#                 invoice_doc.append("payments", {
+#                     "mode_of_payment": method.mode_of_payment,
+#                     "amount": -share,
+#                     "type": method.type,
+#                     "allow_in_returns": 1,
+#                 })
+#             return
+
+#     for payment_method in pos_profile.payments:
+#         if payment_method.allow_in_returns:
+#             invoice_doc.append("payments", {
+#                 "mode_of_payment": payment_method.mode_of_payment,
+#                 "allow_in_returns": payment_method.allow_in_returns,
+#                 "type": payment_method.type,
+#                 "amount": 0,
+#             })
+
 def _add_payments_to_return_invoice(invoice_doc):
-    invoice_doc.payments = [] # reset payments
     pos_profile = frappe.get_doc("POS Profile", invoice_doc.pos_profile)
+    lock_enabled = cint(pos_profile.get("posa_lock_return_payment_method"))
+    invoice_doc.payments = []
+
+    original_name = invoice_doc.get("return_against")
+    original_methods = []
+    if lock_enabled and original_name:
+        original_methods = frappe.get_all(
+            "Sales Invoice Payment",
+            filters={"parent": original_name},
+            fields=["mode_of_payment", "amount"],
+            order_by="idx",
+        )
+        original_methods = [p for p in original_methods if flt(p.amount) != 0]
+
+    return_total = abs(flt(invoice_doc.rounded_total or invoice_doc.grand_total))
+    precision = invoice_doc.precision("grand_total") or 2
+
+    if lock_enabled and len(original_methods) == 1:
+        invoice_doc.append("payments", {
+            "mode_of_payment": original_methods[0].mode_of_payment,
+            "amount": -return_total,
+            "allow_in_returns": 1,
+        })
+        return
+
+    if lock_enabled and len(original_methods) > 1:
+        original_total = sum(flt(p.amount) for p in original_methods)
+        if original_total > 0:
+            running_total = 0.0
+            for i, method in enumerate(original_methods):
+                ratio = flt(method.amount) / original_total
+                if i < len(original_methods) - 1:
+                    share = flt(return_total * ratio, precision)
+                    running_total += share
+                else:
+                    share = flt(return_total - running_total, precision)
+                invoice_doc.append("payments", {
+                    "mode_of_payment": method.mode_of_payment,
+                    "amount": -share,
+                    "allow_in_returns": 1,
+                })
+            return
 
     for payment_method in pos_profile.payments:
-        if  payment_method.allow_in_returns:
+        if payment_method.allow_in_returns:
             invoice_doc.append("payments", {
                 "mode_of_payment": payment_method.mode_of_payment,
                 "allow_in_returns": payment_method.allow_in_returns,
-        })
-
+                "amount": 0,
+            })
 @frappe.whitelist()
 def get_wholesale_rates(
     pos_profile: str,

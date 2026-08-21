@@ -1,0 +1,21 @@
+[
+ {
+  "allow_guest": 0,
+  "api_method": null,
+  "cron_format": null,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Server Script",
+  "doctype_event": "Before Save",
+  "enable_rate_limit": 0,
+  "event_frequency": "All",
+  "modified": "2026-04-02 10:53:04.670077",
+  "module": null,
+  "name": "Shipping Return",
+  "rate_limit_count": 5,
+  "rate_limit_seconds": 86400,
+  "reference_doctype": "Sales Invoice",
+  "script": "# Run only for return invoices\r\nif doc.is_return:\r\n\r\n    # 1️⃣ Remove shipping rule\r\n    doc.shipping_rule = None\r\n    doc.delivery_charges = 0\r\n\r\n    # 2️⃣ If taxes exist, keep ONLY first row\r\n    if doc.taxes and len(doc.taxes) > 1:\r\n\r\n        first_tax = doc.taxes[0]\r\n\r\n        # Clear all taxes\r\n        doc.set(\"taxes\", [])\r\n\r\n        # Re-add ONLY first row\r\n        new_tax = doc.append(\"taxes\", {})\r\n        new_tax.charge_type = first_tax.charge_type\r\n        new_tax.account_head = first_tax.account_head\r\n        new_tax.description = first_tax.description\r\n        new_tax.rate = first_tax.rate\r\n        \r\n        new_tax.cost_center = doc.cost_center or frappe.db.get_value(\r\n            \"Company\", doc.company, \"cost_center\"\r\n        )\r\n\r\n    # 3️⃣ Recalculate totals\r\n    doc.run_method(\"calculate_taxes_and_totals\")",
+  "script_type": "DocType Event"
+ }
+]

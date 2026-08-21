@@ -1638,7 +1638,29 @@ export default {
       return items_list;
     },
 
+    // get_payments() {
+    //   const payments = [];
+    //   this.pos_profile.payments.forEach((payment) => {
+    //     payments.push({
+    //       amount: 0,
+    //       mode_of_payment: payment.mode_of_payment,
+    //       default: payment.default,
+    //       account: "",
+    //     });
+    //   });
+    //   return payments;
+    // },
+
+
     get_payments() {
+      const locked = this.invoice_doc.is_return
+        && this.pos_profile.posa_lock_return_payment_method
+        && this.invoice_doc.return_against;
+
+      if (locked && this.invoice_doc.payments && this.invoice_doc.payments.length) {
+        return this.invoice_doc.payments;
+      }
+
       const payments = [];
       this.pos_profile.payments.forEach((payment) => {
         payments.push({
@@ -1646,11 +1668,12 @@ export default {
           mode_of_payment: payment.mode_of_payment,
           default: payment.default,
           account: "",
+          type: payment.type || "",   // <-- carry the POS Profile Payment's type through
         });
       });
       return payments;
     },
-
+    
     update_invoice(doc) {
       var vm = this;
       frappe.call({

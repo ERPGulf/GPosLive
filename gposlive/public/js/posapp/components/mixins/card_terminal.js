@@ -56,9 +56,15 @@ export default {
 			this.card_terminal_ready = false;
 			this.card_terminal_error = null;
 
+			// try {
+			// 	const r = await frappe.call({
+			// 		method: "geidea_erpgulf.alhamrani.get_card_provider",
+			// 	});
+			// 	this.card_provider = r.message || null;
 			try {
 				const r = await frappe.call({
 					method: "geidea_erpgulf.alhamrani.get_card_provider",
+					args: { pos_opening_shift: this.pos_opening_shift?.name },
 				});
 				this.card_provider = r.message || null;
 			} catch (e) {
@@ -91,9 +97,16 @@ export default {
 				return;
 			}
 
+			// try {
+			// 	const cfg = await alhamrani_payment.init();
+			// 	await alhamrani_payment.check_device();
 			try {
-				const cfg = await alhamrani_payment.init();
+				const cfg = await alhamrani_payment.init(
+					this.pos_profile?.name,
+					this.pos_opening_shift?.name
+				);
 				await alhamrani_payment.check_device();
+
 				this.card_terminal_ready = true;
 
 				// No longer blocks POS open on leftover Unconfirmed rows. They're
@@ -207,17 +220,36 @@ export default {
 		// ---------------------------------------------------------------
 
 		async take_card_payment_alhamrani(amount) {
+			const magnitude = Math.abs(parseFloat(amount));
+			const isReturn = this.invoice_doc.is_return;
 			let attempt = 1;
 
 			while (true) {
 				let result;
 
 				try {
-					result = await alhamrani_payment.purchase({
-						amount: amount,
-						pos_invoice: this.invoice_doc.name,
-						attempt: attempt,
-					});
+					result = isReturn
+						? await alhamrani_payment.refund({
+							amount: magnitude,
+							pos_invoice: this.invoice_doc.name,
+							pos_opening_shift: this.pos_opening_shift?.name,
+						})
+						: await alhamrani_payment.purchase({
+							amount: magnitude,
+							pos_invoice: this.invoice_doc.name,
+							pos_opening_shift: this.pos_opening_shift?.name,
+							attempt: attempt,
+						});
+					// result = isReturn
+					// 	? await alhamrani_payment.refund({
+					// 		amount: magnitude,
+					// 		pos_invoice: this.invoice_doc.name,
+					// 	})
+					// 	: await alhamrani_payment.purchase({
+					// 		amount: magnitude,
+					// 		pos_invoice: this.invoice_doc.name,
+					// 		attempt: attempt,
+					// 	});
 				} catch (err) {
 					if (err.indeterminate) {
 						frappe.msgprint({
