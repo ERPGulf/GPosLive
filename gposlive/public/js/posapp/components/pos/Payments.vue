@@ -1407,12 +1407,26 @@ export default {
     },
     set_full_amount(payment) {
 
-      // Route by card_provider ONLY -- custom_device_enabled is legacy and, since
-      // fetchDeviceStatus() now queries Alhamrani, no longer means "Geidea is
-      // enabled". Checking it here would misroute Alhamrani tills into the old
-      // Geidea-only flow (which fails and zeroes the amount, since there's no
-      // GEIdea Device Map for this user).
-      if (payment.mode_of_payment?.toLowerCase() === "credit card") {
+      const isCreditCard = payment.mode_of_payment?.toLowerCase() === "credit card";
+
+      // Locked return: amounts are already correct from the server-computed
+      // split and must never be overwritten by the generic "set full amount"
+      // behaviour below. BUT for Credit Card, the button's job isn't just to
+      // set an amount -- it's to actually send the (already correct, locked)
+      // amount to the terminal for approval/refund. Blocking the click
+      // entirely would leave a locked credit-card return with no way to
+      // trigger the device call.
+      if (this.is_locked_return && !isCreditCard) {
+        this.eventBus.emit("show_message", {
+          text: this.$t("Payment amounts are locked for this return and cannot be changed."),
+          color: "warning",
+        });
+        return;
+      }
+
+      // if Credit Card → call API (fires even when locked, using the
+      // already-locked amount already sitting in payment.amount)
+      if (isCreditCard) {
         if (this.card_provider === "geidea") {
           this.credit_card_payment(payment);
           return;
@@ -1421,11 +1435,12 @@ export default {
           this.alhamrani_card_payment(payment);
           return;
         }
-        // No provider configured for this shift -- fall through to the normal
-        // full-amount behaviour below so the field is at least usable manually.
+        // No provider configured -- fall through to normal full-amount
+        // behaviour below so the field is at least usable manually.
       }
 
-      // normal payments → set full amount
+      // normal payments → set full amount (only reached when NOT locked, or
+      // when credit card has no provider configured)
       this.invoice_doc.payments.forEach((p) => {
         p.amount =
           p.idx === payment.idx
@@ -1434,6 +1449,35 @@ export default {
       });
 
     },
+    // set_full_amount(payment) {
+
+    //   // Route by card_provider ONLY -- custom_device_enabled is legacy and, since
+    //   // fetchDeviceStatus() now queries Alhamrani, no longer means "Geidea is
+    //   // enabled". Checking it here would misroute Alhamrani tills into the old
+    //   // Geidea-only flow (which fails and zeroes the amount, since there's no
+    //   // GEIdea Device Map for this user).
+    //   if (payment.mode_of_payment?.toLowerCase() === "credit card") {
+    //     if (this.card_provider === "geidea") {
+    //       this.credit_card_payment(payment);
+    //       return;
+    //     }
+    //     if (this.card_provider === "alhamrani") {
+    //       this.alhamrani_card_payment(payment);
+    //       return;
+    //     }
+    //     // No provider configured for this shift -- fall through to the normal
+    //     // full-amount behaviour below so the field is at least usable manually.
+    //   }
+
+    //   // normal payments → set full amount
+    //   this.invoice_doc.payments.forEach((p) => {
+    //     p.amount =
+    //       p.idx === payment.idx
+    //         ? this.invoice_doc.rounded_total
+    //         : 0;
+    //   });
+
+    // },
     on_payment_input(changedPayment) {
       // Parse — treat empty/invalid as 0
       const enteredAmount = parseFloat(changedPayment.amount) || 0;
