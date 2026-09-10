@@ -674,6 +674,7 @@
             >{{ $t("Submit & Print") }}</v-btn
           >
         </v-col>
+
         <v-col cols="12">
           <v-btn
             block
@@ -773,6 +774,7 @@ import CardTerminal from "../mixins/card_terminal";
 export default {
   mixins: [format, CardTerminal],
   data: () => ({
+    resettingSession: false,
     pos_opening_shift: null,
     alhamrani_card_pending: false,
     alhamrani_card_approved: false,
@@ -813,6 +815,40 @@ export default {
   }),
 
   methods: {
+      async resetAlhamraniSession() {
+        this.resettingSession = true;
+        try {
+          const pending = await frappe.call({
+            method: "geidea_erpgulf.alhamrani.get_unconfirmed",
+            args: { pos_opening_shift: this.pos_opening_shift?.name },
+          });
+          for (const txn of (pending.message || []).filter(t => t.status === "Pending")) {
+            await frappe.call({
+              method: "geidea_erpgulf.alhamrani.mark_unconfirmed",
+              args: { txn: txn.name, reason: "Cleared via manual session reset." },
+            });
+          }
+          console.log("3");
+
+          await alhamrani_payment.reset_session();
+          this.card_terminal_ready = true;
+          this.card_terminal_error = null;
+          this.eventBus.emit("show_message", {
+            text: __("Payment session reset. Terminal reconnected."),
+            color: "success",
+          });
+          console.log("4");
+        } catch (e) {
+          this.card_terminal_ready = false;
+          this.card_terminal_error = e.message;
+          this.eventBus.emit("show_message", {
+            text: __("Could not reset the payment session: {0}", [e.message]),
+            color: "error",
+          });
+        } finally {
+          this.resettingSession = false;
+        }
+      },
     // async fetchDeviceStatus() {
     //   const res = await frappe.call({
     //     method: "gposlive.gposlive.api.posapp.is_device_enabled",
@@ -1427,6 +1463,13 @@ export default {
       // if Credit Card → call API (fires even when locked, using the
       // already-locked amount already sitting in payment.amount)
       if (isCreditCard) {
+        if (this.invoice_doc.is_return && !this.pos_profile?.custom_enable_card_payment_for_return) {
+          this.eventBus.emit("show_message", {
+            text: this.$t("Card payment is not enabled for returns on this POS Profile."),
+            color: "warning",
+          });
+          return;
+        }
         if (this.card_provider === "geidea") {
           this.credit_card_payment(payment);
           return;

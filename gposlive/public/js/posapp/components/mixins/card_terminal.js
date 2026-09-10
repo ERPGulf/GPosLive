@@ -32,6 +32,7 @@ const CARD_MOP = "credit card";
 export default {
 	data() {
 		return {
+			resettingSession: false,
 			card_provider: null,      // "geidea" | "alhamrani" | null
 			card_terminal_ready: false,
 			card_terminal_error: null,
@@ -46,6 +47,51 @@ export default {
 	},
 
 	methods: {
+		/**
+		 * Force-recover from a hung or disconnected Alhamrani session without
+		 * restarting the Windows service. Clears any stuck Pending transactions
+		 * for this shift, cancels any in-flight terminal transaction (best
+		 * effort), tears down the existing SignalR connection, and negotiates a
+		 * fresh one via alhamrani_payment.reset_session().
+		 */
+		async reset_alhamrani_session() {
+			console.log("reset_alhamrani_session");
+			if (this.card_provider !== "alhamrani" || !window.alhamrani_payment) {
+				return;
+			}
+
+			this.resettingSession = true;
+			try {
+				const pending = await frappe.call({
+					method: "geidea_erpgulf.alhamrani.get_unconfirmed",
+					args: { pos_opening_shift: this.pos_opening_shift?.name },
+				});
+				for (const txn of (pending.message || []).filter((t) => t.status === "Pending")) {
+					await frappe.call({
+						method: "geidea_erpgulf.alhamrani.mark_unconfirmed",
+						args: { txn: txn.name, reason: "Cleared via manual session reset." },
+					});
+				}
+
+				// await alhamrani_payment.is_ready();
+				await alhamrani_payment.reset_session();				
+				this.card_terminal_ready = true;
+				this.card_terminal_error = null;
+				this.eventBus.emit("show_message", {
+					text: __("Payment session reset. Terminal reconnected."),
+					color: "success",
+				});
+			} catch (e) {
+				this.card_terminal_ready = false;
+				this.card_terminal_error = e.message;
+				this.eventBus.emit("show_message", {
+					text: __("Could not reset the payment session: {0}", [e.message]),
+					color: "error",
+				});
+			} finally {
+				this.resettingSession = false;
+			}
+		},
 		// ---------------------------------------------------------------
 		// setup
 		// ---------------------------------------------------------------
@@ -140,6 +186,14 @@ export default {
 		async take_card_payment(amount) {
 			if (!this.card_provider) {
 				return { ok: true, transaction_id: null };   // no terminal configured
+			}
+			if (this.invoice_doc.is_return && !this.pos_profile?.custom_enable_card_payment_for_return) {
+				frappe.msgprint({
+					title: __("Card returns disabled"),
+					message: __("Card payment is not enabled for returns on this POS Profile. Use a different payment method."),
+					indicator: "orange",
+				});
+				return { ok: false, reason: "return_disabled" };
 			}
 			if (!this.card_terminal_ready) {
 				frappe.msgprint({

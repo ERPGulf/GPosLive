@@ -799,7 +799,7 @@ def get_additional_notes_options():
 
 @frappe.whitelist()
 def update_invoice(data: str) -> dict:
-    frappe.log_error("Adding payments to return invoice", "Adding payments to return invoice")
+    # frappe.log_error("Adding payments to return invoice", "Adding payments to return invoice")
     data = json.loads(data)
     
      
