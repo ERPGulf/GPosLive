@@ -674,6 +674,19 @@
             >{{ $t("Submit & Print") }}</v-btn
           >
         </v-col>
+        
+        <v-col cols="12" >
+          <v-btn
+            v-if="card_provider === 'alhamrani'"
+            block
+            class="mt-2 pa-1"
+            color="warning" 
+            theme="dark"
+            :loading="resettingSession"
+            @click="resetAlhamraniSession"
+            >{{ $t("Reset Payment Session") }}
+          </v-btn>
+        </v-col>
 
         <v-col cols="12">
           <v-btn
@@ -828,7 +841,6 @@ export default {
               args: { txn: txn.name, reason: "Cleared via manual session reset." },
             });
           }
-          console.log("3");
 
           await alhamrani_payment.reset_session();
           this.card_terminal_ready = true;
@@ -837,7 +849,6 @@ export default {
             text: __("Payment session reset. Terminal reconnected."),
             color: "success",
           });
-          console.log("4");
         } catch (e) {
           this.card_terminal_ready = false;
           this.card_terminal_error = e.message;
