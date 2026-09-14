@@ -80,6 +80,84 @@ class POSClosingShift(Document):
             for invoice in data:
                 frappe.delete_doc("Sales Invoice", invoice.name, force=1)
 
+
+    # def delete_draft_invoices(self):
+    #     if frappe.get_value("POS Profile", self.pos_profile, "posa_allow_delete"):
+    #         data = frappe.db.sql(
+    #             """
+    #             select
+    #                 name
+    #             from
+    #                 `tabSales Invoice`
+    #             where
+    #                 docstatus = 0 and posa_is_printed = 0 and posa_pos_opening_shift = %s
+    #             """,
+    #             (self.pos_opening_shift),
+    #             as_dict=1,
+    #         )
+    #         skipped = []
+    #         for invoice in data:
+    #             if not self._safe_delete_draft_invoice(invoice.name):
+    #                 skipped.append(invoice.name)
+
+    #         if skipped:
+    #             frappe.log_error(
+    #                 title="POS Closing Shift: draft invoices kept back",
+    #                 message=(
+    #                     "{0} draft invoice(s) were not deleted during shift close "
+    #                     "because they have an approved card transaction attached. "
+    #                     "Review manually: {1}"
+    #                 ).format(len(skipped), ", ".join(skipped)),
+    #             )
+
+    # def _safe_delete_draft_invoice(self, invoice_name):
+    #     """Delete a draft Sales Invoice left over from an abandoned POS session.
+
+    #     Alhamrani Transaction rows link to the invoice and block deletion via
+    #     Frappe's normal LinkExistsError check -- force=1 alone does not
+    #     bypass that check, only workflow/naming-series validation. Handle
+    #     the link deliberately instead of letting every draft fail:
+
+    #     - If any linked transaction is Approved, a card was actually charged
+    #       against this draft. Deleting the invoice would orphan a real
+    #       payment with no invoice trail -- refuse and flag for manual
+    #       review instead of silently discarding it.
+    #     - Otherwise (Pending / Unconfirmed / Declined only), no money was
+    #       captured, or the non-charge is already confirmed. Clear those
+    #       transactions' link to the invoice (keep the transaction log
+    #       itself -- it's still useful audit history) and proceed.
+    #     """
+    #     linked = frappe.get_all(
+    #         "Alhamrani Transaction",
+    #         filters={"sales_invoice": invoice_name},
+    #         fields=["name", "status"],
+    #     )
+
+    #     if not linked:
+    #         frappe.delete_doc("Sales Invoice", invoice_name, force=1)
+    #         return True
+
+    #     approved = [t for t in linked if t.status == "Approved"]
+    #     if approved:
+    #         frappe.log_error(
+    #             title="Draft invoice cleanup skipped -- has an approved card transaction",
+    #             message=(
+    #                 "Sales Invoice {0} was left in Draft but has {1} Approved "
+    #                 "Alhamrani Transaction(s): {2}. NOT deleted automatically -- "
+    #                 "a card payment was taken against this draft. Review "
+    #                 "manually: either resubmit the invoice, or process a "
+    #                 "refund and clear the transaction."
+    #             ).format(invoice_name, len(approved), [t.name for t in approved]),
+    #         )
+    #         return False
+
+    #     for t in linked:
+    #         frappe.db.set_value(
+    #             "Alhamrani Transaction", t.name, "sales_invoice", None, update_modified=False
+    #         )
+    #     frappe.delete_doc("Sales Invoice", invoice_name, force=1)
+    #     return True
+    
     @frappe.whitelist()
     def get_payment_reconciliation_details(self):
         currency = frappe.get_cached_value("Company", self.company, "default_currency")
@@ -303,3 +381,45 @@ def submit_printed_invoices(pos_opening_shift):
     for invoice in invoices_list:
         invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
         invoice_doc.submit()
+
+def before_delete_sales_invoice(doc, method=None):
+    """Runs on every Sales Invoice delete -- desk UI, POS 'Cancel Sale', and
+    the automated shift-close cleanup all go through this same check.
+
+    Alhamrani Transaction rows link to the invoice and Frappe's normal
+    LinkExistsError blocks deletion unconditionally. Handle that
+    deliberately instead of leaving every draft stuck:
+
+    - Approved transaction linked: a card was actually charged against this
+      draft. Refuse -- deleting it would orphan a real payment with no
+      invoice trail. Resubmit the invoice, or refund first.
+    - Only Pending / Unconfirmed / Declined linked: no money was captured,
+      or the non-charge is already confirmed. Clear the link (keep the
+      transaction log itself for audit history) and let the delete proceed.
+    """
+    if doc.docstatus != 0:
+        return  # only ever intervene for drafts
+
+    linked = frappe.get_all(
+        "Alhamrani Transaction",
+        filters={"sales_invoice": doc.name},
+        fields=["name", "status"],
+    )
+    if not linked:
+        return
+
+    approved = [t for t in linked if t.status == "Approved"]
+    if approved:
+        frappe.throw(
+            _(
+                "Cannot delete {0}: it has an approved card transaction ({1}). "
+                "A payment was taken against this draft. Resubmit the invoice, "
+                "or process a refund before deleting."
+            ).format(doc.name, ", ".join(t.name for t in approved)),
+            title=_("Cannot Delete"),
+        )
+
+    for t in linked:
+        frappe.db.set_value(
+            "Alhamrani Transaction", t.name, "sales_invoice", None, update_modified=False
+        )

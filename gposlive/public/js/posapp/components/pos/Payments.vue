@@ -674,19 +674,6 @@
             >{{ $t("Submit & Print") }}</v-btn
           >
         </v-col>
-        
-        <v-col cols="12" >
-          <v-btn
-            v-if="card_provider === 'alhamrani'"
-            block
-            class="mt-2 pa-1"
-            color="warning" 
-            theme="dark"
-            :loading="resettingSession"
-            @click="resetAlhamraniSession"
-            >{{ $t("Reset Payment Session") }}
-          </v-btn>
-        </v-col>
 
         <v-col cols="12">
           <v-btn

@@ -102,6 +102,7 @@ doc_events = {
         "validate": "gposlive.gposlive.api.invoice.validate",
         "before_submit": "gposlive.gposlive.api.invoice.before_submit",
         "before_cancel": "gposlive.gposlive.api.invoice.before_cancel",
+        "on_trash": "gposlive.gposlive.doctype.pos_closing_shift.pos_closing_shift.before_delete_sales_invoice",
     },
     "Customer": {
         "validate": "gposlive.gposlive.api.customer.validate",
