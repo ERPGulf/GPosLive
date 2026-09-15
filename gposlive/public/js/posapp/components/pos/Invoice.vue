@@ -1468,10 +1468,12 @@ export default {
       doc.customer = this.customer;
       doc.items = this.get_invoice_items();
       doc.total = this.subtotal;
+
+
       doc.discount_amount = flt(this.discount_amount);
-      doc.additional_discount_percentage = flt(
-        this.additional_discount_percentage
-      );
+      doc.additional_discount_percentage = flt(this.additional_discount_percentage);
+
+
       doc.posa_pos_opening_shift = this.pos_opening_shift.name;
       doc.payments = this.get_payments();
       doc.taxes = [];
@@ -2968,7 +2970,13 @@ export default {
       new_item.stock_qty = offer.given_qty;
       new_item.rate = offer.discount_type === "Rate" ? offer.rate : item.rate;
       new_item.discount_amount =
-        offer.discount_type === "Discount Amount" ? offer.discount_amount : 0;
+        offer.discount_type === "Discount Amount"
+          ? offer.discount_amount
+          : offer.discount_type === "Rate" && offer.rate
+          ? this.flt(flt(item.rate) - flt(offer.rate), this.currency_precision)
+          : 0;
+      //new_item.discount_amount =
+      //  offer.discount_type === "Discount Amount" ? offer.discount_amount : 0;
       new_item.discount_percentage =
         offer.discount_type === "Discount Percentage"
           ? offer.discount_percentage
@@ -3013,6 +3021,10 @@ export default {
           if (!item_offers.includes(offer.row_id)) {
             if (offer.discount_type === "Rate") {
               item.rate = offer.rate;
+              item.discount_amount = this.flt(
+              flt(item.price_list_rate) - flt(offer.rate),
+              this.currency_precision
+              );
             } else if (offer.discount_type === "Discount Percentage") {
               item.discount_percentage += offer.discount_percentage;
             } else if (offer.discount_type === "Discount Amount") {
@@ -3035,6 +3047,7 @@ export default {
           if (originalOffer) {
             if (originalOffer.discount_type === "Rate") {
               item.rate = item.price_list_rate;
+              item.discount_amount = 0;
             } else if (originalOffer.discount_type === "Discount Percentage") {
               item.discount_percentage -= offer.discount_percentage;
               if (!item.discount_percentage) {

@@ -1122,6 +1122,9 @@ export default {
 
 
     update_item_rate(item) {
+      if (item.posa_is_offer || item.posa_offer_applied) {
+        return;
+      }
       if (localStorage.items_storage) {
         try {
           const items = JSON.parse(localStorage.getItem("items_storage"));
