@@ -163,7 +163,7 @@ class POSClosingShift(Document):
         currency = frappe.get_cached_value("Company", self.company, "default_currency")
         # nosemgrep - frappe-semgrep-rules.rules.security.frappe-ssti
         return frappe.render_template(
-            "gposlive.gposlive/doctype/pos_closing_shift/closing_shift_details.html",
+            "gposlive/gposlive/doctype/pos_closing_shift/closing_shift_details.html",
             {"data": self, "currency": currency},
         )
 
