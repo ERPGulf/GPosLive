@@ -106,6 +106,7 @@ export default {
   props: ["dialog"],
   data() {
     return {
+      defaultTerminal: null,
       alhamraniTerminals: [],
       selectedTerminal: null,
       isOpen: this.dialog ? this.dialog : false,
@@ -213,12 +214,12 @@ export default {
       this.alhamraniTerminals = res.message || [];
       const defaultTerm = this.alhamraniTerminals.find((t) => t.is_default);
       this.selectedTerminal = defaultTerm ? defaultTerm.terminal_id : (this.alhamraniTerminals[0]?.terminal_id || null);
-      this.defaultTerminal = this.selectedTerminal;
+      // this.defaultTerminal = this.selectedTerminal;
     },
 
     async assignTerminalToShift(posOpeningShiftName) {
       if (!this.selectedTerminal) return;
-      if (this.selectedTerminal === this.defaultTerminal) return;
+      // if (this.selectedTerminal === this.defaultTerminal) return;
       await frappe.call({
         method: "geidea_erpgulf.alhamrani.select_terminal",
         args: {
