@@ -93,7 +93,7 @@
                 :rules="[isNumber]"
                 :prefix="currencySymbol(invoice_doc.currency)"
                 @focus="set_rest_amount(payment.idx)"
-                :readonly="is_locked_return"
+                :readonly="is_locked_return || card_row_locked(payment)"
               />
             </v-col>
 
@@ -113,6 +113,7 @@
                 class=""
                 color="primary"
                 theme="dark"
+                :disabled="card_row_locked(payment)"
                 @click="set_full_amount(payment)"
                 >{{ $t(payment.mode_of_payment) }}</v-btn
               >
@@ -1907,11 +1908,18 @@ export default {
   },
 
   computed: {
+    card_row_locked() {
+      return (row) => {
+        if (row.mode_of_payment?.toLowerCase() !== "credit card") return false;
+        if (this.card_provider === "geidea") return this.credit_card_approved;
+        if (this.card_provider === "alhamrani") return this.alhamrani_card_approved;
+        return false;
+      };
+    },
+
     computed_diff_payment() {
       return this.diff_payment;
     },
-
-
       total_payments() {
       let total = 0;
 
