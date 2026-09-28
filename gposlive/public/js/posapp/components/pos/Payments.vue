@@ -93,7 +93,8 @@
                 :rules="[isNumber]"
                 :prefix="currencySymbol(invoice_doc.currency)"
                 @focus="set_rest_amount(payment.idx)"
-                :readonly="is_locked_return || card_row_locked(payment)"
+                :readonly="is_locked_return || locked_for_card_flow(payment)"
+                
               />
             </v-col>
 
@@ -113,7 +114,8 @@
                 class=""
                 color="primary"
                 theme="dark"
-                :disabled="card_row_locked(payment)"
+                :disabled="locked_for_card_flow(payment)"
+                
                 @click="set_full_amount(payment)"
                 >{{ $t(payment.mode_of_payment) }}</v-btn
               >
@@ -966,6 +968,7 @@ export default {
               text: vm.$t("Credit Card Payment Approved"),
               color: "success",
             });
+            vm.submit(undefined, false, true, true);
           } else {
             vm.credit_card_approved = false;
             vm.credit_card_transaction_id = null;
@@ -1061,6 +1064,7 @@ export default {
             text: vm.$t("Credit Card Payment Approved"),
             color: "success",
           });
+          vm.submit(undefined, false, true, true);
         } else {
           vm.alhamrani_card_approved = false;
           vm.alhamrani_transaction_id = null;
@@ -1158,31 +1162,31 @@ export default {
       this.eventBus.emit("show_payment", "false");
       this.eventBus.emit("set_customer_readonly", false);
     },
-    submit(event, payment_received = false, print = false) {
+    submit(event, payment_received = false, print = false, skipCardGuards = false) {
       const hasCreditCard = this.invoice_doc.payments.some(
         (p) =>
           p.mode_of_payment &&
           p.mode_of_payment.toLowerCase() === "credit card" &&
           p.amount > 0 // ensure it's actually being used
       );
+      if (!skipCardGuards) {
+        if (hasCreditCard && this.card_provider === "geidea" && !this.credit_card_approved) {
+          this.eventBus.emit("show_message", {
+            text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
+            color: "error",
+          });
+          frappe.utils.play_sound("error");
+          return;
+        }
 
-      if (hasCreditCard && this.card_provider === "geidea" && !this.credit_card_approved) {
-        this.eventBus.emit("show_message", {
-          text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
-          color: "error",
-        });
-        frappe.utils.play_sound("error");
-        return;
-      }
-
-      if (hasCreditCard && this.card_provider === "alhamrani" && !this.alhamrani_card_approved) {
-        this.eventBus.emit("show_message", {
-          text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
-          color: "error",
-        });
-        frappe.utils.play_sound("error");
-        return;
-      }
+        if (hasCreditCard && this.card_provider === "alhamrani" && !this.alhamrani_card_approved) {
+          this.eventBus.emit("show_message", {
+            text: this.$t("❌ Credit Card not approved. Cannot submit invoice."),
+            color: "error",
+          });
+          frappe.utils.play_sound("error");
+          return;
+        }
         if (this.loading) {
           this.eventBus.emit("show_message", {
             text: this.$t("Credit Card in progress. Please wait..."),
@@ -1190,6 +1194,7 @@ export default {
           });
           return;
         }
+      }
       
       if (!this.is_credit_sale) {
         if (
@@ -1429,6 +1434,15 @@ export default {
           vm.is_cashback = true;
           vm.sales_person = "";
 
+          // NEW — reset card-flow state so the next transaction starts unlocked
+          vm.credit_card_approved = false;
+          vm.credit_card_pending = false;
+          vm.credit_card_transaction_id = null;
+          vm.alhamrani_card_approved = false;
+          vm.alhamrani_card_pending = false;
+          vm.alhamrani_transaction_id = null;
+          vm.loading = false;
+
           vm.eventBus.emit("set_last_invoice", vm.invoice_doc.name);
           vm.eventBus.emit("show_message", {
             text: `Invoice ${r.message.name} is Submited`,
@@ -1472,6 +1486,17 @@ export default {
           });
           return;
         }
+        if (this.diff_payment !== 0) {
+          this.eventBus.emit("show_message", {
+            text: this.$t(
+              "خطأ: يجب توزيع كامل قيمة الفاتورة بين بطاقة الائتمان والنقد (بحيث يكون المبلغ المتبقي صفراً) قبل ارسال المبلغ لجهاز الشبكة"
+            ),
+            color: "error",
+          });
+          frappe.utils.play_sound("error");
+          return;
+        }
+
         if (this.card_provider === "geidea") {
           this.credit_card_payment(payment);
           return;
@@ -1607,6 +1632,17 @@ export default {
         "&no_letterhead=" +
         letter_head;
       const printWindow = window.open(url, "Print");
+      if (!printWindow) {
+        // Popup blocked -- common right after an async approval callback rather
+        // than a direct click. Don't let this abort the rest of the submit flow.
+        this.eventBus.emit("show_message", {
+          text: this.$t(
+            "Print window was blocked by the browser. Please allow pop-ups for this site to enable automatic printing."
+          ),
+          color: "warning",
+        });
+        return;
+      }
       printWindow.addEventListener(
         "load",
         function () {
@@ -1908,6 +1944,21 @@ export default {
   },
 
   computed: {
+    card_flow_active() {
+      return (
+        this.credit_card_pending ||
+        this.alhamrani_card_pending ||
+        this.credit_card_approved ||
+        this.alhamrani_card_approved
+      );
+    },
+    locked_for_card_flow() {
+      return (row) => {
+        const mop = row.mode_of_payment?.toLowerCase();
+        if (mop !== "credit card" && mop !== "cash") return false;
+        return this.card_flow_active;
+      };
+    },
     card_row_locked() {
       return (row) => {
         if (row.mode_of_payment?.toLowerCase() !== "credit card") return false;
