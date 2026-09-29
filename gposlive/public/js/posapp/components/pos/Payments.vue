@@ -1208,7 +1208,7 @@ export default {
         //     (this.invoice_doc.rounded_total || this.invoice_doc.grand_total)
         // ) {
           this.eventBus.emit("show_message", {
-            text: `The amount paid is not correct11`,
+            text: this.$t("The amount paid is not correct."),
             color: "error",
           });
           frappe.utils.play_sound("error");
@@ -1218,7 +1218,7 @@ export default {
       if (this.is_credit_sale) {
         if (this.total_payments !== 0) {
           this.eventBus.emit("show_message", {
-            text: `The amount paid is not correct`,
+            text: this.$t("The amount paid is not correct."),
             color: "error",
           });
           frappe.utils.play_sound("error");
@@ -1261,7 +1261,7 @@ export default {
       //}
       if (!this.invoice_doc.is_return && this.total_payments < 0) {
         this.eventBus.emit("show_message", {
-          text: `Payments not correct`,
+          text: this.$t("Payments are not correct."),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -1298,7 +1298,7 @@ export default {
           (this.invoice_doc.rounded_total || this.invoice_doc.grand_total)
       ) {
         this.eventBus.emit("show_message", {
-          text: `The amount paid is not correct`,
+          text: this.$t("The amount paid is not correct."),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -1311,7 +1311,7 @@ export default {
         this.total_payments == 0
       ) {
         this.eventBus.emit("show_message", {
-          text: `Please enter the amount paid`,
+          text: this.$t("Please enter the amount paid."),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -1323,7 +1323,7 @@ export default {
       if (!(this.invoice_doc.is_return && !this.is_cashback)) {
         if (this.paid_change > -this.diff_payment) {
           this.eventBus.emit("show_message", {
-            text: `Paid change can not be greater than total change!`,
+            text: this.$t("Paid change cannot be greater than total change!"),
             color: "error",
           });
           frappe.utils.play_sound("error");
@@ -1337,7 +1337,7 @@ export default {
 
       if (this.is_cashback && total_change != -this.diff_payment) {
         this.eventBus.emit("show_message", {
-          text: `Error in change calculations!`,
+          text: this.$t("Error in change calculations!"),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -1352,7 +1352,7 @@ export default {
 
       if (credit_calc_check.length > 0) {
         this.eventBus.emit("show_message", {
-          text: `redeamed credit can not greater than its total.`,
+          text: this.$t("Redeemed credit cannot be greater than the total."),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -1365,7 +1365,7 @@ export default {
           (this.invoice_doc.rounded_total || this.invoice_doc.grand_total)
       ) {
         this.eventBus.emit("show_message", {
-          text: `can not redeam customer credit more than invoice total`,
+          text: this.$t("Cannot redeem customer credit more than the invoice total."),
           color: "error",
         });
         frappe.utils.play_sound("error");
@@ -2299,7 +2299,7 @@ export default {
         this.invoice_doc.redeem_loyalty_points = 0;
         this.invoice_doc.loyalty_points = 0;
         this.eventBus.emit("show_message", {
-          text: `Loyalty Amount can not be more then ${this.available_pioints_amount}`,
+          text: this.$t("Loyalty amount cannot be more than {0}", [this.available_pioints_amount]),
           color: "error",
         });
       } else {
@@ -2332,7 +2332,7 @@ export default {
     redeemed_customer_credit(value) {
       if (value > this.available_customer_credit) {
         this.eventBus.emit("show_message", {
-          text: `You can redeem customer credit upto ${this.available_customer_credit}`,
+          text: this.$t("You can redeem customer credit up to {0}", [this.available_customer_credit]),
           color: "error",
         });
       }

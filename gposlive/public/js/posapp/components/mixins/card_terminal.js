@@ -28,7 +28,60 @@
  */
 
 const CARD_MOP = "credit card";
+const DECLINE_REASON_AR = {
+  "100": "الرجاء عدم إتمام العملية",
+  "101": "بطاقة منتهية الصلاحية",
+  "102": "اشتباه بعملية احتيال",
+  "104": "بطاقة مقيدة",
+  "106": "تم تجاوز عدد محاولات الرقم السري المسموح بها",
+  "107": "الرجاء مراجعة جهة إصدار البطاقة",
+  "109": "تاجر غير صالح",
+  "110": "مبلغ غير صحيح",
+  "111": "رقم بطاقة غير صحيح",
+  "112": "بيانات الرقم السري مطلوبة",
+  "116": "عدم توفر رصيد",
+  "117": "رقم سري غير صحيح",
+  "118": "لا يوجد سجل للبطاقة",
+  "119": "غير مسموح لحامل البطاقة",
+  "120": "غير مسموح للجهاز الطرفي",
+  "121": "تجاوز حد السحب",
+  "122": "مخالفة أمنية",
+  "125": "البطاقة غير فعّالة",
+  "126": "كتلة رقم سري غير صحيحة",
+  "129": "اشتباه ببطاقة مزوّرة",
+  "184": "رمز التحقق (CVV) غير صحيح",
+  "187": "لم يتم العثور على العملية الأصلية",
+  "188": "تم الرفض بدون اتصال",
+  "195": "المبلغ يتجاوز حد العملية الفردية",
+  "196": "تم تجاوز حد الدفع اللاتلامسي التراكمي",
+  "197": "البطاقة تختلف عن العملية الأصلية",
+  "198": "مبلغ الاسترداد يتجاوز المبلغ الأصلي",
+  "199": "خارج الوقت المسموح به لمدى",
+  "208": "بطاقة مفقودة",
+  "209": "بطاقة مسروقة",
+  "480": "لم يتم العثور على العملية الأصلية",
+  "481": "تم العثور على العملية الأصلية لكن تم رفضها",
+  "888": "خطأ غير معروف",
+  "902": "عملية غير صالحة",
+  "903": "الرجاء إعادة إدخال العملية",
+  "909": "عطل في النظام",
+  "913": "إرسال مكرر",
+  "940": "جهاز طرفي غير معروف",
+  CAN: "انتهت المهلة / تم الإلغاء من قبل المستخدم",
+  NA: "لا يوجد رد",
+  LC: "انقطاع الاتصال",
+  CE: "خطأ في الاتصال",
+  TO: "انتهت المهلة",
+  UC: "تم الإلغاء من قبل المستخدم",
+  NL: "لا يوجد خط",
+  LB: "الخط مشغول",
+  NNA: "غير متاح",
+  REJ: "مرفوض",
+};
 
+function describe_ar(code, fallback) {
+  return DECLINE_REASON_AR[code] || fallback;
+}
 export default {
 	data() {
 		return {
@@ -334,10 +387,22 @@ export default {
 					});
 					return { ok: false, reason: "not_charged" };
 				}
+				// NEW — reads the exact same source the rest of the app already uses
+				const lang = localStorage.getItem("lang") || "en";
+				console.log("🔍 DECLINE_DEBUG — lang is:", lang, "| result.code:", result.code, "| result.meaning:", result.meaning);
+				const meaning = lang === "ar"
+				? describe_ar(result.code, result.meaning)
+				: result.meaning;
 
-				const retry = await this.confirm_async(
-					__("Card declined: {0}. Try again?", [result.meaning])
-				);
+				const confirmText = lang === "ar"
+				? `البطاقة مرفوضة - ${meaning} - الرجاء المحاولة مرة اخرى`
+				: `Card declined: ${meaning}. Try again?`;
+
+				const retry = await this.confirm_async(confirmText);
+				
+				// const retry = await this.confirm_async(
+				// 	__("Card declined: {0}. Try again?", [result.meaning])
+				// );
 				if (!retry) return { ok: false, reason: "declined" };
 				attempt += 1;
 			}
