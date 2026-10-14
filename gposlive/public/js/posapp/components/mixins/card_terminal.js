@@ -28,6 +28,13 @@
  */
 
 const CARD_MOP = "credit card";
+const RRN_PATTERN = /^[A-Za-z0-9]{6,20}$/;
+
+// The POS language lives in localStorage (same source as $t()), not frappe.boot.lang.
+function t_pos(en, ar, args) {
+	const text = (localStorage.getItem("lang") || "en") === "ar" ? ar : en;
+	return args ? String(text).replace(/\{(\d+)\}/g, (m, i) => args[i]) : text;
+}
 const DECLINE_REASON_AR = {
   "100": "الرجاء عدم إتمام العملية",
   "101": "بطاقة منتهية الصلاحية",
@@ -325,7 +332,6 @@ export default {
 		// ---------------------------------------------------------------
 		// Alhamrani
 		// ---------------------------------------------------------------
-
 		async take_card_payment_alhamrani(amount) {
 			const magnitude = Math.abs(parseFloat(amount));
 			const isReturn = this.invoice_doc.is_return;
@@ -347,24 +353,10 @@ export default {
 							pos_opening_shift: this.pos_opening_shift?.name,
 							attempt: attempt,
 						});
-					// result = isReturn
-					// 	? await alhamrani_payment.refund({
-					// 		amount: magnitude,
-					// 		pos_invoice: this.invoice_doc.name,
-					// 	})
-					// 	: await alhamrani_payment.purchase({
-					// 		amount: magnitude,
-					// 		pos_invoice: this.invoice_doc.name,
-					// 		attempt: attempt,
-					// 	});
 				} catch (err) {
 					if (err.indeterminate) {
-						frappe.msgprint({
-							title: __("Card payment unresolved"),
-							message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [err.txn]),
-							indicator: "orange",
-						});
-						return { ok: false, reason: "not_charged" };
+						// Timeout / lost connection: outcome unknown. Ask for the slip RRN.
+						return this.handle_unresolved_card_payment(err.txn, magnitude);
 					}
 
 					frappe.msgprint({
@@ -380,33 +372,103 @@ export default {
 				}
 
 				if (result.status === "Unconfirmed") {
-					frappe.msgprint({
-						title: __("Card payment unresolved"),
-						message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [result.txn]),
-						indicator: "orange",
-					});
-					return { ok: false, reason: "not_charged" };
+					return this.handle_unresolved_card_payment(result.txn, magnitude);
 				}
-				// NEW — reads the exact same source the rest of the app already uses
-				const lang = localStorage.getItem("lang") || "en";
-				console.log("🔍 DECLINE_DEBUG — lang is:", lang, "| result.code:", result.code, "| result.meaning:", result.meaning);
-				const meaning = lang === "ar"
-				? describe_ar(result.code, result.meaning)
-				: result.meaning;
 
+				const lang = localStorage.getItem("lang") || "en";
+				const meaning = lang === "ar"
+					? describe_ar(result.code, result.meaning)
+					: result.meaning;
 				const confirmText = lang === "ar"
-				? `البطاقة مرفوضة - ${meaning} - الرجاء المحاولة مرة اخرى`
-				: `Card declined: ${meaning}. Try again?`;
+					? `البطاقة مرفوضة - ${meaning} - الرجاء المحاولة مرة اخرى`
+					: `Card declined: ${meaning}. Try again?`;
 
 				const retry = await this.confirm_async(confirmText);
-				
-				// const retry = await this.confirm_async(
-				// 	__("Card declined: {0}. Try again?", [result.meaning])
-				// );
 				if (!retry) return { ok: false, reason: "declined" };
 				attempt += 1;
 			}
 		},
+		// async take_card_payment_alhamrani(amount) {
+		// 	const magnitude = Math.abs(parseFloat(amount));
+		// 	const isReturn = this.invoice_doc.is_return;
+		// 	let attempt = 1;
+
+		// 	while (true) {
+		// 		let result;
+
+		// 		try {
+		// 			result = isReturn
+		// 				? await alhamrani_payment.refund({
+		// 					amount: magnitude,
+		// 					pos_invoice: this.invoice_doc.name,
+		// 					pos_opening_shift: this.pos_opening_shift?.name,
+		// 				})
+		// 				: await alhamrani_payment.purchase({
+		// 					amount: magnitude,
+		// 					pos_invoice: this.invoice_doc.name,
+		// 					pos_opening_shift: this.pos_opening_shift?.name,
+		// 					attempt: attempt,
+		// 				});
+		// 			// result = isReturn
+		// 			// 	? await alhamrani_payment.refund({
+		// 			// 		amount: magnitude,
+		// 			// 		pos_invoice: this.invoice_doc.name,
+		// 			// 	})
+		// 			// 	: await alhamrani_payment.purchase({
+		// 			// 		amount: magnitude,
+		// 			// 		pos_invoice: this.invoice_doc.name,
+		// 			// 		attempt: attempt,
+		// 			// 	});
+		// 		} catch (err) {
+		// 			if (err.indeterminate) {
+		// 				frappe.msgprint({
+		// 					title: __("Card payment unresolved"),
+		// 					message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [err.txn]),
+		// 					indicator: "orange",
+		// 				});
+		// 				return { ok: false, reason: "not_charged" };
+		// 			}
+
+		// 			frappe.msgprint({
+		// 				title: __("Card payment failed"),
+		// 				message: err.message,
+		// 				indicator: "red",
+		// 			});
+		// 			return { ok: false, reason: "error" };
+		// 		}
+
+		// 		if (result.approved) {
+		// 			return { ok: true, transaction_id: result.rrn };
+		// 		}
+
+		// 		if (result.status === "Unconfirmed") {
+		// 			frappe.msgprint({
+		// 				title: __("Card payment unresolved"),
+		// 				message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [result.txn]),
+		// 				indicator: "orange",
+		// 			});
+		// 			return { ok: false, reason: "not_charged" };
+		// 		}
+		// 		// NEW — reads the exact same source the rest of the app already uses
+		// 		const lang = localStorage.getItem("lang") || "en";
+		// 		console.log("🔍 DECLINE_DEBUG — lang is:", lang, "| result.code:", result.code, "| result.meaning:", result.meaning);
+		// 		const meaning = lang === "ar"
+		// 		? describe_ar(result.code, result.meaning)
+		// 		: result.meaning;
+
+		// 		const confirmText = lang === "ar"
+		// 		? `البطاقة مرفوضة - ${meaning} - الرجاء المحاولة مرة اخرى`
+		// 		: `Card declined: ${meaning}. Try again?`;
+
+		// 		const retry = await this.confirm_async(confirmText);
+				
+		// 		// const retry = await this.confirm_async(
+		// 		// 	__("Card declined: {0}. Try again?", [result.meaning])
+		// 		// );
+		// 		if (!retry) return { ok: false, reason: "declined" };
+		// 		attempt += 1;
+		// 	}
+		// },
 
 		// ---------------------------------------------------------------
 		// cashier-facing resolution
@@ -422,6 +484,112 @@ export default {
 		 * Refund and write-off are deliberately absent. Those are manager
 		 * decisions taken on the desk form, not by a cashier mid-queue.
 		 */
+
+		
+		/**
+		 * Terminal outcome unknown. Offer the slip-RRN route first; only if the
+		 * cashier says nothing was charged do we fall back to "use another method".
+		 */
+		async handle_unresolved_card_payment(txn, amount) {
+			if (txn) {
+				const manual = await this.prompt_manual_rrn(txn, amount);
+				if (manual.ok) return manual;      // { ok: true, transaction_id: rrn }
+			}
+
+			frappe.msgprint({
+				title: t_pos("Card payment unresolved", "عملية الدفع بالبطاقة غير محسومة"),
+				message: t_pos(
+					"The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.",
+					"لم يؤكد جهاز الدفع هذه العملية. استخدم طريقة دفع أخرى أو راجع معاملة الحمراني {0} لاحقاً.",
+					[txn || "-"]
+				),
+				indicator: "orange",
+			});
+			return { ok: false, reason: "not_charged" };
+		},
+
+		/**
+		 * Ask for the RRN printed on the terminal slip. Resolves
+		 *   { ok: true, transaction_id: <rrn>, manual: true }   server flipped txn to Approved
+		 *   { ok: false, reason: "not_charged" }                cashier says no slip / not charged
+		 * Cannot be dismissed: the cashier must pick one of the two outcomes.
+		 */
+		prompt_manual_rrn(txn, amount) {
+			return new Promise((resolve) => {
+				const formatted = format_currency(amount, this.invoice_doc.currency);
+
+				const d = new frappe.ui.Dialog({
+					title: t_pos("Confirm payment from the terminal slip", "تأكيد الدفع من إيصال الجهاز"),
+					fields: [
+						{
+							fieldtype: "HTML",
+							options: `
+								<div class="alert alert-warning">
+									<b>${t_pos("The terminal did not report back.", "لم يصل رد من جهاز الشبكة.")}</b><br>
+									<b>${t_pos("Do not charge the customer again.", "لا تقم بخصم المبلغ من العميل مرة أخرى.")}</b><br><br>
+									${t_pos(
+										"If the terminal printed an approved slip for {0}, enter the RRN printed on it.",
+										"إذا طبع الجهاز إيصالاً بالموافقة على مبلغ {0}، أدخل رقم RRN المطبوع عليه.",
+										[formatted]
+									)}
+								</div>`,
+						},
+						{
+							fieldname: "rrn",
+							fieldtype: "Data",
+							label: t_pos("RRN (from the terminal slip)", "رقم RRN (من إيصال الجهاز)"),
+							reqd: 1,
+							description: t_pos(
+								"Retrieval Reference Number, labelled RRN on the slip. Not the TRN, STAN or approval code.",
+								"الرقم المرجعي للعملية، مكتوب RRN على الإيصال. وليس TRN أو STAN أو رمز الموافقة."
+							),
+						},
+					],
+					primary_action_label: t_pos("Confirm payment", "تأكيد الدفع"),
+					primary_action: (values) => {
+						const rrn = String(values.rrn || "").replace(/\s+/g, "");
+						if (!RRN_PATTERN.test(rrn)) {
+							frappe.msgprint({
+								message: t_pos(
+									"Enter the RRN exactly as printed on the slip (6 to 20 letters or digits).",
+									"أدخل رقم RRN كما هو مطبوع على الإيصال (من 6 إلى 20 حرفاً أو رقماً)."
+								),
+								indicator: "red",
+							});
+							return;
+						}
+						frappe.call({
+							method: "geidea_erpgulf.alhamrani.confirm_with_rrn",
+							args: {
+								txn: txn,
+								rrn: rrn,
+								pos_opening_shift: this.pos_opening_shift?.name,
+							},
+							freeze: true,
+							// On a server error (e.g. RRN already used) frappe shows it and the
+							// dialog stays open, because the callback below never runs.
+							callback: (r) => {
+								if (r.message && r.message.approved) {
+									d.hide();
+									resolve({ ok: true, transaction_id: r.message.rrn, manual: true });
+								}
+							},
+						});
+					},
+				});
+
+				d.$wrapper.find(".modal-header .btn-modal-close").hide();
+				d.$wrapper.modal({ backdrop: "static", keyboard: false });
+
+				d.set_secondary_action_label(t_pos("No slip: not charged", "لا يوجد إيصال: لم يتم الخصم"));
+				d.set_secondary_action(() => {
+					d.hide();
+					resolve({ ok: false, reason: "not_charged" });
+				});
+
+				d.show();
+			});
+		},
 		resolve_unconfirmed(txn, amount) {
 			return new Promise((resolve) => {
 				const formatted = format_currency(amount, this.invoice_doc.currency);
