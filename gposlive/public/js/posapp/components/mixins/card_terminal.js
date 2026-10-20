@@ -355,7 +355,7 @@ export default {
 						});
 				} catch (err) {
 					if (err.indeterminate) {
-						// Timeout / lost connection: outcome unknown. Ask for the slip RRN.
+						// CASE 4 ONLY: nothing came back (timeout or lost connection).
 						return this.handle_unresolved_card_payment(err.txn, magnitude);
 					}
 
@@ -367,14 +367,24 @@ export default {
 					return { ok: false, reason: "error" };
 				}
 
+				// CASE 1: approved
 				if (result.approved) {
 					return { ok: true, transaction_id: result.rrn };
 				}
 
+				// CASE 2: the terminal REPLIED but not with a clean approve/decline
+				// (UC/CAN = cancelled at the terminal). A response arrived, so the slip
+				// flow does not apply. Identical to the original behaviour.
 				if (result.status === "Unconfirmed") {
-					return this.handle_unresolved_card_payment(result.txn, magnitude);
+					frappe.msgprint({
+						title: __("Card payment unresolved"),
+						message: __("The card machine did not confirm this payment. Use a different payment method, or check Alhamrani Transaction {0} later.", [result.txn]),
+						indicator: "orange",
+					});
+					return { ok: false, reason: "not_charged" };
 				}
 
+				// CASE 3: declined, offer retry
 				const lang = localStorage.getItem("lang") || "en";
 				const meaning = lang === "ar"
 					? describe_ar(result.code, result.meaning)
@@ -516,38 +526,52 @@ export default {
 		 */
 		prompt_manual_rrn(txn, amount) {
 			return new Promise((resolve) => {
-				const formatted = format_currency(amount, this.invoice_doc.currency);
+				const is_ar = (localStorage.getItem("lang") || "en") === "ar";
+				const currency = this.invoice_doc.currency;
+				const amount_en = format_currency(amount, currency);          // e.g. SR 20.00
+				const amount_ar = flt(amount).toFixed(2);
+				const currency_ar = currency === "SAR" ? "ريال سعودي" : currency;
+
+				const message_html = is_ar
+					? `<div class="alert alert-warning" dir="rtl" style="text-align:right">
+							<b>لم يقم جهاز الشبكة (البنك) بإرسال تقرير بالاستجابة.</b><br>
+							<b>لا تقم بتحصيل المبلغ من العميل مرة أخرى.</b><br><br>
+							إذا قام الجهاز بطباعة إيصال مقبول بالمبلغ (${amount_ar}) ${currency_ar}، وكانت العملية مقبولة الرجاء إدخال رقم المرجع الخاص بالعملية (RRN) المطبوع في ورقة الإيصال من جهاز الدفع للبنك في الخانة بالأسفل واضغط على زر <b>تأكيد الدفع (مقبولة)</b>.<br><br>
+							أما إذا لم تكن هناك عملية مقبولة للبطاقة أو لا يوجد عملية، اضغط على الزر الآخر: <b>لا يوجد عملية دفع مقبولة</b>.
+						</div>`
+					: `<div class="alert alert-warning">
+							<b>The terminal did not report back.</b><br>
+							<b>Do not charge the customer again.</b><br><br>
+							If the terminal printed an approved slip for ${amount_en}, enter the RRN printed on it.
+						</div>`;
 
 				const d = new frappe.ui.Dialog({
-					title: t_pos("Confirm payment from the terminal slip", "تأكيد الدفع من إيصال الجهاز"),
+					title: t_pos("Confirm payment from the terminal slip", "تأكيد عملية الدفع"),
 					fields: [
-						{
-							fieldtype: "HTML",
-							options: `
-								<div class="alert alert-warning">
-									<b>${t_pos("The terminal did not report back.", "لم يصل رد من جهاز الشبكة.")}</b><br>
-									<b>${t_pos("Do not charge the customer again.", "لا تقم بخصم المبلغ من العميل مرة أخرى.")}</b><br><br>
-									${t_pos(
-										"If the terminal printed an approved slip for {0}, enter the RRN printed on it.",
-										"إذا طبع الجهاز إيصالاً بالموافقة على مبلغ {0}، أدخل رقم RRN المطبوع عليه.",
-										[formatted]
-									)}
-								</div>`,
-						},
+						{ fieldtype: "HTML", options: message_html },
 						{
 							fieldname: "rrn",
 							fieldtype: "Data",
 							label: t_pos("RRN (from the terminal slip)", "رقم RRN (من إيصال الجهاز)"),
-							reqd: 1,
 							description: t_pos(
 								"Retrieval Reference Number, labelled RRN on the slip. Not the TRN, STAN or approval code.",
-								"الرقم المرجعي للعملية، مكتوب RRN على الإيصال. وليس TRN أو STAN أو رمز الموافقة."
+								"الرجاء كتابة الرقم المرجعي RRN المطبوع في ورقة الإيصال للبنك (في حالة كانت العملية مقبولة)، وإلا اترك الخانة فارغة في حالة عدم وجود أي عملية. وليس TRN أو STAN أو رمز الموافقة."
 							),
 						},
 					],
-					primary_action_label: t_pos("Confirm payment", "تأكيد الدفع"),
+					primary_action_label: t_pos("Confirm payment", "تأكيد الدفع (مقبولة)"),
 					primary_action: (values) => {
 						const rrn = String(values.rrn || "").replace(/\s+/g, "");
+						if (!rrn) {
+							frappe.msgprint({
+								message: t_pos(
+									'Enter the RRN from the slip, or press "No slip: not charged".',
+									"أدخل رقم RRN من الإيصال، أو اضغط «لا يوجد عملية دفع مقبولة»."
+								),
+								indicator: "orange",
+							});
+							return;
+						}
 						if (!RRN_PATTERN.test(rrn)) {
 							frappe.msgprint({
 								message: t_pos(
@@ -566,8 +590,6 @@ export default {
 								pos_opening_shift: this.pos_opening_shift?.name,
 							},
 							freeze: true,
-							// On a server error (e.g. RRN already used) frappe shows it and the
-							// dialog stays open, because the callback below never runs.
 							callback: (r) => {
 								if (r.message && r.message.approved) {
 									d.hide();
@@ -581,7 +603,7 @@ export default {
 				d.$wrapper.find(".modal-header .btn-modal-close").hide();
 				d.$wrapper.modal({ backdrop: "static", keyboard: false });
 
-				d.set_secondary_action_label(t_pos("No slip: not charged", "لا يوجد إيصال: لم يتم الخصم"));
+				d.set_secondary_action_label(t_pos("No slip: not charged", "لا يوجد عملية دفع مقبولة"));
 				d.set_secondary_action(() => {
 					d.hide();
 					resolve({ ok: false, reason: "not_charged" });
