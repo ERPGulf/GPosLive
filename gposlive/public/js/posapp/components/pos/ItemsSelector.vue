@@ -56,7 +56,7 @@
 
         <v-col cols="12" class="pt-0 mt-0">
           <div fluid class="items" v-if="items_view == 'card'">
-            <v-row density="default" class="overflow-y-auto" style="max-height: 67vh">
+            <v-row density="default" class="overflow-y-auto pos-item-grid" style="max-height: 67vh">
               <v-col
                 v-for="(item, idx) in filtered_items"
                 :key="idx"
@@ -746,4 +746,4 @@ export default {
 };
 </script>
 
-<style scoped></style>
+<style>.pos-item-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 0 !important; padding: 4px; overflow-x: hidden; } .pos-item-grid > .v-col { flex: none !important; width: auto !important; max-width: none !important; padding: 0 !important; } .pos-item-grid > .v-col > .v-card { width: 100%; height: 100%; }</style>
