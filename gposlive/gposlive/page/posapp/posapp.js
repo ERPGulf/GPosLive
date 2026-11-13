@@ -3,7 +3,7 @@ frappe.pages['posapp'].on_page_load = function (wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: 'POS Awesome',
-		single_column: true
+		single_column: true, hide_sidebar: true, hide_dock: true
 	});
 
 	this.page.$PosApp = new frappe.PosApp.posapp(this.page);
