@@ -746,4 +746,4 @@ export default {
 };
 </script>
 
-<style>.pos-item-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 0 !important; padding: 4px; overflow-x: hidden; } .pos-item-grid > .v-col { flex: none !important; width: auto !important; max-width: none !important; padding: 0 !important; } .pos-item-grid > .v-col > .v-card { width: 100%; height: 100%; }</style>
+<style>.pos-item-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px !important; margin: 0 !important; padding: 2px !important; overflow-x: hidden; } .pos-item-grid > * { flex: none !important; width: auto !important; max-width: none !important; padding: 0 !important; margin: 0 !important; } .pos-item-grid > * > .v-card { width: 100% !important; height: 100%; margin: 0 !important; }</style>
