@@ -9,7 +9,8 @@ app_description = "GPosLive"
 app_icon = "octicon octicon-file-directory"
 app_color = "grey"
 app_email = "support@erpgulf.com"
-app_license = "GPLv3"; add_to_apps_screen = [{"name": app_name, "logo": "/assets/gposlive/images/gposlive-logo.svg", "title": app_title, "route": "/app/gposlive"}]
+app_license = "GPLv3"; 
+add_to_apps_screen = [{"name": GPosLive, "logo": "/assets/gposlive/images/gposlive-logo.svg", "title": GPosLive from ERPGulf, "route": "/app/gposlive"}]
 
 # Includes in <head>
 # ------------------
