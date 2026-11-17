@@ -575,6 +575,7 @@ export default {
 						if (!RRN_PATTERN.test(rrn)) {
 							frappe.msgprint({
 								message: t_pos(
+									"Enter the correct RRN from the bank slip (the RRN must be exactly 12 digits and is printed at the top of the bank slip).",
 									"أدخل رقم RRN الصحيح من ايصال البنك : ( رقم RRN يجب ان يكون 12  رقما وهو موجود في اعلى صفحة ايصال البنك )"
 								),
 								indicator: "red",
