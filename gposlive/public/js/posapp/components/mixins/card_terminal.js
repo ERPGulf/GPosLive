@@ -28,7 +28,7 @@
  */
 
 const CARD_MOP = "credit card";
-const RRN_PATTERN = /^[A-Za-z0-9]{6,20}$/;
+const RRN_PATTERN = /^[0-9]{12}$/;
 
 // The POS language lives in localStorage (same source as $t()), not frappe.boot.lang.
 function t_pos(en, ar, args) {
@@ -36,58 +36,58 @@ function t_pos(en, ar, args) {
 	return args ? String(text).replace(/\{(\d+)\}/g, (m, i) => args[i]) : text;
 }
 const DECLINE_REASON_AR = {
-  "100": "الرجاء عدم إتمام العملية",
-  "101": "بطاقة منتهية الصلاحية",
-  "102": "اشتباه بعملية احتيال",
-  "104": "بطاقة مقيدة",
-  "106": "تم تجاوز عدد محاولات الرقم السري المسموح بها",
-  "107": "الرجاء مراجعة جهة إصدار البطاقة",
-  "109": "تاجر غير صالح",
-  "110": "مبلغ غير صحيح",
-  "111": "رقم بطاقة غير صحيح",
-  "112": "بيانات الرقم السري مطلوبة",
-  "116": "عدم توفر رصيد",
-  "117": "رقم سري غير صحيح",
-  "118": "لا يوجد سجل للبطاقة",
-  "119": "غير مسموح لحامل البطاقة",
-  "120": "غير مسموح للجهاز الطرفي",
-  "121": "تجاوز حد السحب",
-  "122": "مخالفة أمنية",
-  "125": "البطاقة غير فعّالة",
-  "126": "كتلة رقم سري غير صحيحة",
-  "129": "اشتباه ببطاقة مزوّرة",
-  "184": "رمز التحقق (CVV) غير صحيح",
-  "187": "لم يتم العثور على العملية الأصلية",
-  "188": "تم الرفض بدون اتصال",
-  "195": "المبلغ يتجاوز حد العملية الفردية",
-  "196": "تم تجاوز حد الدفع اللاتلامسي التراكمي",
-  "197": "البطاقة تختلف عن العملية الأصلية",
-  "198": "مبلغ الاسترداد يتجاوز المبلغ الأصلي",
-  "199": "خارج الوقت المسموح به لمدى",
-  "208": "بطاقة مفقودة",
-  "209": "بطاقة مسروقة",
-  "480": "لم يتم العثور على العملية الأصلية",
-  "481": "تم العثور على العملية الأصلية لكن تم رفضها",
-  "888": "خطأ غير معروف",
-  "902": "عملية غير صالحة",
-  "903": "الرجاء إعادة إدخال العملية",
-  "909": "عطل في النظام",
-  "913": "إرسال مكرر",
-  "940": "جهاز طرفي غير معروف",
-  CAN: "انتهت المهلة / تم الإلغاء من قبل المستخدم",
-  NA: "لا يوجد رد",
-  LC: "انقطاع الاتصال",
-  CE: "خطأ في الاتصال",
-  TO: "انتهت المهلة",
-  UC: "تم الإلغاء من قبل المستخدم",
-  NL: "لا يوجد خط",
-  LB: "الخط مشغول",
-  NNA: "غير متاح",
-  REJ: "مرفوض",
+	"100": "الرجاء عدم إتمام العملية",
+	"101": "بطاقة منتهية الصلاحية",
+	"102": "اشتباه بعملية احتيال",
+	"104": "بطاقة مقيدة",
+	"106": "تم تجاوز عدد محاولات الرقم السري المسموح بها",
+	"107": "الرجاء مراجعة جهة إصدار البطاقة",
+	"109": "تاجر غير صالح",
+	"110": "مبلغ غير صحيح",
+	"111": "رقم بطاقة غير صحيح",
+	"112": "بيانات الرقم السري مطلوبة",
+	"116": "عدم توفر رصيد",
+	"117": "رقم سري غير صحيح",
+	"118": "لا يوجد سجل للبطاقة",
+	"119": "غير مسموح لحامل البطاقة",
+	"120": "غير مسموح للجهاز الطرفي",
+	"121": "تجاوز حد السحب",
+	"122": "مخالفة أمنية",
+	"125": "البطاقة غير فعّالة",
+	"126": "كتلة رقم سري غير صحيحة",
+	"129": "اشتباه ببطاقة مزوّرة",
+	"184": "رمز التحقق (CVV) غير صحيح",
+	"187": "لم يتم العثور على العملية الأصلية",
+	"188": "تم الرفض بدون اتصال",
+	"195": "المبلغ يتجاوز حد العملية الفردية",
+	"196": "تم تجاوز حد الدفع اللاتلامسي التراكمي",
+	"197": "البطاقة تختلف عن العملية الأصلية",
+	"198": "مبلغ الاسترداد يتجاوز المبلغ الأصلي",
+	"199": "خارج الوقت المسموح به لمدى",
+	"208": "بطاقة مفقودة",
+	"209": "بطاقة مسروقة",
+	"480": "لم يتم العثور على العملية الأصلية",
+	"481": "تم العثور على العملية الأصلية لكن تم رفضها",
+	"888": "خطأ غير معروف",
+	"902": "عملية غير صالحة",
+	"903": "الرجاء إعادة إدخال العملية",
+	"909": "عطل في النظام",
+	"913": "إرسال مكرر",
+	"940": "جهاز طرفي غير معروف",
+	CAN: "انتهت المهلة / تم الإلغاء من قبل المستخدم",
+	NA: "لا يوجد رد",
+	LC: "انقطاع الاتصال",
+	CE: "خطأ في الاتصال",
+	TO: "انتهت المهلة",
+	UC: "تم الإلغاء من قبل المستخدم",
+	NL: "لا يوجد خط",
+	LB: "الخط مشغول",
+	NNA: "غير متاح",
+	REJ: "مرفوض",
 };
 
 function describe_ar(code, fallback) {
-  return DECLINE_REASON_AR[code] || fallback;
+	return DECLINE_REASON_AR[code] || fallback;
 }
 export default {
 	data() {
@@ -134,7 +134,7 @@ export default {
 				}
 
 				// await alhamrani_payment.is_ready();
-				await alhamrani_payment.reset_session();				
+				await alhamrani_payment.reset_session();
 				this.card_terminal_ready = true;
 				this.card_terminal_error = null;
 				this.eventBus.emit("show_message", {
@@ -471,7 +471,7 @@ export default {
 		// 		: `Card declined: ${meaning}. Try again?`;
 
 		// 		const retry = await this.confirm_async(confirmText);
-				
+
 		// 		// const retry = await this.confirm_async(
 		// 		// 	__("Card declined: {0}. Try again?", [result.meaning])
 		// 		// );
@@ -495,7 +495,7 @@ export default {
 		 * decisions taken on the desk form, not by a cashier mid-queue.
 		 */
 
-		
+
 		/**
 		 * Terminal outcome unknown. Offer the slip-RRN route first; only if the
 		 * cashier says nothing was charged do we fall back to "use another method".
@@ -575,8 +575,7 @@ export default {
 						if (!RRN_PATTERN.test(rrn)) {
 							frappe.msgprint({
 								message: t_pos(
-									"Enter the RRN exactly as printed on the slip (6 to 20 letters or digits).",
-									"أدخل رقم RRN كما هو مطبوع على الإيصال (من 6 إلى 20 حرفاً أو رقماً)."
+									"أدخل رقم RRN الصحيح من ايصال البنك : ( رقم RRN يجب ان يكون 12  رقما وهو موجود في اعلى صفحة ايصال البنك )"
 								),
 								indicator: "red",
 							});
@@ -602,6 +601,17 @@ export default {
 
 				d.$wrapper.find(".modal-header .btn-modal-close").hide();
 				d.$wrapper.modal({ backdrop: "static", keyboard: false });
+
+				// RRN input mask: digits only, max 12. Typing, paste and drag-drop all pass through "input".
+				const $rrn = d.fields_dict.rrn.$input;
+				$rrn.attr({ maxlength: 12, inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off" });
+				$rrn.on("input", function () {
+					const clean = this.value
+						.replace(/[٠-٩]/g, (c) => c.charCodeAt(0) - 0x0660)   // Arabic-Indic digits typed on an Arabic keyboard
+						.replace(/[^0-9]/g, "")
+						.slice(0, 12);
+					if (this.value !== clean) this.value = clean;
+				});
 
 				d.set_secondary_action_label(t_pos("No slip: not charged", "لا يوجد عملية دفع مقبولة"));
 				d.set_secondary_action(() => {
